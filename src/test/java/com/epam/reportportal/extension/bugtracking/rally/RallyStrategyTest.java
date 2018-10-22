@@ -15,12 +15,11 @@ import java.net.URISyntaxException;
  */
 public class RallyStrategyTest {
 	static final String URI = "https://rally1.rallydev.com";
-	static final String apiKey = "_giEOR5AWSMW4sh14XQLmIi2OWbMSp0B6rN1s8ZGBaHc";
 
 	@Test
 	public void getTicketTest() throws URISyntaxException, IOException {
 		RallyRestApi api = new RallyRestApi(new URI(URI), apiKey);
-		GetRequest rq = new GetRequest("/project/37655118707");
+		GetRequest rq = new GetRequest("/defect/189075388172");
 		GetResponse rs = api.get(rq);
 		JsonObject object = rs.getObject();
 		System.out.println();

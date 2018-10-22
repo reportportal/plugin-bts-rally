@@ -1,22 +1,27 @@
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
+import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.ta.reportportal.binary.DataStoreService;
-import com.epam.ta.reportportal.commons.Preconditions;
-import com.epam.ta.reportportal.commons.validation.BusinessRule;
+import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
-import com.epam.ta.reportportal.entity.item.issue.IssueType;
+import com.epam.ta.reportportal.entity.log.Log;
 import com.epam.ta.reportportal.entity.project.Project;
-import com.epam.ta.reportportal.ws.model.ErrorType;
+import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
 import com.epam.ta.reportportal.ws.model.externalsystem.Ticket;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.GetRequest;
+import com.rallydev.rest.request.QueryRequest;
 import com.rallydev.rest.response.GetResponse;
+import com.rallydev.rest.response.QueryResponse;
+import com.rallydev.rest.util.QueryFilter;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +31,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.stream.StreamSupport;
+import java.util.stream.Collectors;
 
+import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.DEFECT;
+import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.FORMATTED_ID;
 import static com.epam.ta.reportportal.commons.Predicates.isPresent;
 import static com.epam.ta.reportportal.commons.validation.BusinessRule.expect;
 import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM;
-import static java.util.Optional.ofNullable;
 
 /**
  * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
@@ -41,14 +47,23 @@ public class RallyStrategy implements BtsExtension {
 	private static final String BUG = "Bug";
 	private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
+	private Gson gson;
+
 	@Autowired
 	private DataStoreService dataStorage;
+
+	@Autowired
+	private LogRepository logRepository;
 
 /*	@Autowired
 	private JIRATicketDescriptionService descriptionService;*/
 
 	@Autowired
 	private BasicTextEncryptor simpleEncryptor;
+
+	public RallyStrategy() {
+		this.gson = new Gson();
+	}
 
 	@Override
 	public boolean connectionTest(Integration system) {
@@ -69,105 +84,69 @@ public class RallyStrategy implements BtsExtension {
 	@Override
 	//    @Cacheable(value = CacheConfiguration.EXTERNAL_SYSTEM_TICKET_CACHE, key = "#system.url + #system.project + #id")
 	public Optional<Ticket> getTicket(final String id, Integration system) {
-		try (RallyRestApi client = getClient(system.getParams())) {
-			return getTicket(id, client);
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-			return Optional.empty();
+		Ticket ticket;
+		try (RallyRestApi restApi = getClient(system.getParams())) {
+			Optional<Defect> optionalDefect = findDefect(restApi, id);
+			if (!optionalDefect.isPresent()) {
+				return Optional.empty();
+			}
+			ticket = RallyTicketUtils.toTicket(optionalDefect.get(), system);
+		} catch (Exception ex) {
+			LOGGER.error("Unable load ticket :" + ex.getMessage(), ex);
+			throw new ReportPortalException("Unable load ticket :" + ex.getMessage(), ex);
 		}
+		return Optional.of(ticket);
 	}
 
-	private Optional<Ticket> getTicket(String id, RallyRestApi rallyRestApi) throws IOException {
-		JsonObject issue = findIssue(id, rallyRestApi);
-		return ofNullable(RallyTicketUtils.toTicket(issue));
+	private Optional<Defect> findDefect(RallyRestApi restApi, String id) throws IOException {
+		QueryRequest rq = new QueryRequest(DEFECT);
+		rq.setQueryFilter(new QueryFilter(FORMATTED_ID, "=", id));
+		QueryResponse rs = restApi.query(rq);
+		if (!rs.wasSuccessful()) {
+			return Optional.empty();
+		}
+		List<Defect> defects = gson.fromJson(rs.getResults(), new TypeToken<List<Defect>>() {
+		}.getType());
+		return defects.stream().findAny();
+
 	}
 
 	@Override
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration details) {
-		/*expect(ticketRQ.getFields(), not(isNull())).verify(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "External System fields set is empty!");
-		List<PostFormField> fields = ticketRQ.getFields();
-
-		// TODO add validation of any field with allowedValues() array
-		// Additional validation required for unsupported
-		// ticket type and/or components in JIRA.
-		PostFormField issuetype = new PostFormField();
-		PostFormField components = new PostFormField();
-		for (PostFormField object : fields) {
-			if ("issuetype".equalsIgnoreCase(object.getId())) {
-				issuetype = object;
-			}
-			if ("components".equalsIgnoreCase(object.getId())) {
-				components = object;
-			}
-		}
-
-		expect(issuetype.getValue().size(), equalTo(1)).verify(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
-				formattedSupplier("[IssueType] field has multiple values '{}' but should be only one", issuetype.getValue())
-		);
-		final String issueTypeStr = issuetype.getValue().get(0);
-
-		try (JiraRestClient client = getClient(details.getParams())) {
-			Project jiraProject = getProject(client, details);
-
-			if (null != components.getValue()) {
-				Set<String> validComponents = StreamSupport.stream(jiraProject.getComponents().spliterator(), false)
-						.map(JiraPredicates.COMPONENT_NAMES)
-						.collect(toSet());
-				validComponents.forEach(component -> expect(component, in(validComponents)).verify(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
-						formattedSupplier("Component '{}' not exists in the external system", component)
-				));
-			}
-
-			// TODO consider to modify code below - project cached
-			Optional<IssueType> issueType = StreamSupport.stream(jiraProject.getIssueTypes().spliterator(), false)
-					.filter(input -> issueTypeStr.equalsIgnoreCase(input.getName()))
-					.findFirst();
-
-			expect(issueType, Preconditions.IS_PRESENT).verify(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
-					formattedSupplier("Unable post issue with type '{}' for project '{}'.",
-							issuetype.getValue().get(0),
-							details.getProject()
-					)
-			);
-			IssueInput issueInput = JIRATicketUtils.toIssueInput(client,
-					jiraProject,
-					issueType,
-					ticketRQ,
-					ticketRQ.getBackLinks().keySet(),
-					descriptionService
-			);
-
-			Map<String, String> binaryData = findBinaryData(issueInput);
-
-			*//*
-		 * Claim because we wanna be sure everything is OK
-		 *//*
-			BasicIssue createdIssue = client.getIssueClient().createIssue(issueInput).claim();
-
-			// post binary data
-			Issue issue = client.getIssueClient().getIssue(createdIssue.getKey()).claim();
-
-			AttachmentInput[] attachmentInputs = new AttachmentInput[binaryData.size()];
-			int counter = 0;
-			for (Map.Entry<String, String> binaryDataEntry : binaryData.entrySet()) {
-				BinaryData data = dataStorage.load(binaryDataEntry.getKey());
-				if (null != data) {
-					attachmentInputs[counter] = new AttachmentInput(binaryDataEntry.getValue(), data.getInputStream());
-					counter++;
+		try (RallyRestApi restApi = getClient(details.getParams())) {
+			List<InternalTicket.LogEntry> itemLogs = loadTestItemLogs(ticketRQ);
+			Defect newDefect = postDefect(restApi, ticketRQ, externalSystem);
+			String description = newDefect.getDescription();
+			Map<String, String> attachments = new HashMap<>();
+			for (LogEntry logEntry : itemLogs) {
+				if (logEntry.getBinaryDataId() != null) {
+					attachments.put(logEntry.getBinaryDataId(),
+							String.valueOf(postImage(newDefect.getRef(), logEntry, restApi).getObjectId())
+					);
 				}
 			}
-			if (counter != 0) {
-				client.getIssueClient().addAttachments(issue.getAttachmentsUri(), Arrays.copyOf(attachmentInputs, counter));
+			for (Map.Entry<String, String> binaryDataEntry : attachments.entrySet()) {
+				description = description.replace(binaryDataEntry.getKey(),
+						"/slm/attachment/" + binaryDataEntry.getValue() + "/" + binaryDataEntry.getKey()
+				);
 			}
-			return getTicket(createdIssue.getKey(), details.getParams(), client).orElse(null);
-
-		} catch (ReportPortalException e) {
-			throw e;
+			updateDescription(description, newDefect, restApi);
+			return buildTicket(newDefect, externalSystem);
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-			throw new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, e.getMessage());
-		}*/
-		return null;
+			LOGGER.error("Unable to submit ticket: " + e.getMessage(), e);
+			throw new ReportPortalException("Unable to submit ticket: " + e.getMessage(), e);
+		}
+	}
+
+	private List<InternalTicket.LogEntry> loadTestItemLogs(PostTicketRQ ticketRQ) {
+		List<Log> logs = ticketRQ.getBackLinks().size() == 1 ?
+				logRepository.findByTestItemId(ticketRQ.getTestItemId(),
+						ticketRQ.getNumberOfLogs() == 0 ? 50 : ticketRQ.getNumberOfLogs()
+				) :
+				new ArrayList<>();
+		return logs.stream()
+				.map(log -> new InternalTicket.LogEntry(log, dataStorage.load(log.getAttachment()), ticketRQ.getIsIncludeLogs()))
+				.collect(Collectors.toList());
 	}
 
 	/**
@@ -217,7 +196,7 @@ public class RallyStrategy implements BtsExtension {
 
 	@Override
 	public List<PostFormField> getTicketFields(final String ticketType, Integration details) {
-		List<PostFormField> result = new ArrayList<>();
+		/*List<PostFormField> result = new ArrayList<>();
 		try (RallyRestApi client = getClient(details.getParams())) {
 			Project jiraProject = getProject(client, details);
 			Optional<IssueType> issueType = StreamSupport.stream(jiraProject.getIssueTypes().spliterator(), false)
@@ -304,7 +283,7 @@ public class RallyStrategy implements BtsExtension {
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			return new ArrayList<>();
-		}
+		}*/
 		return null;
 
 	}
