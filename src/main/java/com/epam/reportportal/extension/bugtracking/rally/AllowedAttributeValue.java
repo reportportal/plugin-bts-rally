@@ -15,8 +15,31 @@
  */
 package com.epam.reportportal.extension.bugtracking.rally;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
  * @author Dzmitry_Kavalets
  */
-public class Project extends RallyObject {
+public class AllowedAttributeValue extends RallyObject {
+	@SerializedName("Count")
+	private int count;
+
+	@SerializedName("StringValue")
+	private String stringValue;
+
+	public String getStringValue() {
+		return stringValue;
+	}
+
+	public void setStringValue(String stringValue) {
+		this.stringValue = stringValue;
+	}
+
+	public int getCount() {
+		return count;
+	}
+
+	public void setCount(int count) {
+		this.count = count;
+	}
 }

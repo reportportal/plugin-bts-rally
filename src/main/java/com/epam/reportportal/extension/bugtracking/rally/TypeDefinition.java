@@ -15,8 +15,21 @@
  */
 package com.epam.reportportal.extension.bugtracking.rally;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
  * @author Dzmitry_Kavalets
  */
-public class Project extends RallyObject {
+public class TypeDefinition extends RallyObject {
+
+	@SerializedName("Attributes")
+	private AttributeDefinition attributeDefinition;
+
+	public AttributeDefinition getAttributeDefinition() {
+		return attributeDefinition;
+	}
+
+	public void setAttributeDefinition(AttributeDefinition attributeDefinition) {
+		this.attributeDefinition = attributeDefinition;
+	}
 }
