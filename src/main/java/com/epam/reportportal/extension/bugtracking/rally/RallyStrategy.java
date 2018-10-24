@@ -21,6 +21,7 @@ import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.ta.reportportal.binary.DataStoreService;
+import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
@@ -30,6 +31,7 @@ import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
 import com.epam.ta.reportportal.ws.model.externalsystem.Ticket;
+import com.google.common.base.Suppliers;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -50,12 +52,14 @@ import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
@@ -65,42 +69,41 @@ import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_E
  * @author Dzmitry_Kavalets
  */
 @Extension
+@Component
 public class RallyStrategy implements BtsExtension {
 
 	private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
 	private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
-	private Gson gson;
+	private Gson gson = new Gson();
 
+	@Autowired
 	private DataStoreService dataStorage;
 
+	@Autowired
 	private TestItemRepository testItemRepository;
 
+	@Autowired
 	private TemplateEngine templateEngine;
 
 	@Autowired
-	InternalTicketAssembler ticketAssembler;
+	private LogRepository logRepository;
 
-	public RallyStrategy() {
-		this.gson = new Gson();
-	}
+	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(
+			logRepository,
+			testItemRepository,
+			dataStorage
+	));
 
-	@Autowired
-	public RallyStrategy(DataStoreService dataStorage, TestItemRepository testItemRepository, TemplateEngine templateEngine) {
-		this.gson = new Gson();
-		this.dataStorage = dataStorage;
-		this.testItemRepository = testItemRepository;
-		this.templateEngine = templateEngine;
-	}
 
 	@Override
 	public boolean connectionTest(Integration integration) {
 		String project = BtsConstants.PROJECT.getParam(integration.getParams(), String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally URL value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally Project value cannot be NULL"));
 
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			QueryRequest rq = new QueryRequest(PROJECT);
-			rq.setQueryFilter(new QueryFilter(FORMATTED_ID, "=", project));
+			rq.setQueryFilter(new QueryFilter(OBJECT_ID, "=", project));
 			return restApi.query(rq).wasSuccessful();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
@@ -127,7 +130,7 @@ public class RallyStrategy implements BtsExtension {
 	@Override
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
-			List<InternalTicket.LogEntry> logs = ticketAssembler.apply(ticketRQ).getLogs();
+			List<InternalTicket.LogEntry> logs = ticketAssembler.get().apply(ticketRQ).getLogs();
 			Defect newDefect = postDefect(restApi, ticketRQ, integration);
 			String description = newDefect.getDescription();
 			Map<String, String> attachments = new HashMap<>();
@@ -205,7 +208,8 @@ public class RallyStrategy implements BtsExtension {
 
 	private Ticket toTicket(Defect defect, Integration externalSystem) {
 		Ticket ticket = new Ticket();
-		String link = BtsConstants.URL.getParam(externalSystem.getParams(), String.class) + "/#/" + Ref.getOidFromRef(defect.getProject()
+		String link =
+				BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get() + "/#/" + Ref.getOidFromRef(defect.getProject()
 				.getRef()) + "/detail/defect/" + defect.getObjectId();
 		ticket.setId(defect.getFormattedId());
 		ticket.setSummary(defect.getName());
@@ -239,7 +243,7 @@ public class RallyStrategy implements BtsExtension {
 			}
 		}
 
-		String description = createDescription(ticketRQ, ticketAssembler.apply(ticketRQ).getLogs());
+		String description = createDescription(ticketRQ, ticketAssembler.get().apply(ticketRQ).getLogs());
 		newDefect.addProperty(DESCRIPTION,
 				newDefect.get(DESCRIPTION) != null ? (newDefect.get(DESCRIPTION).getAsString() + "<br>" + description) : description
 		);
