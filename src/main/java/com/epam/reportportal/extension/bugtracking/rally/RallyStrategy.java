@@ -32,6 +32,7 @@ import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
 import com.epam.ta.reportportal.ws.model.externalsystem.Ticket;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -131,6 +132,7 @@ public class RallyStrategy implements BtsExtension {
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			List<InternalTicket.LogEntry> logs = ticketAssembler.get().apply(ticketRQ).getLogs();
+			logs = logs == null ? Lists.newArrayList() : logs;
 			Defect newDefect = postDefect(restApi, ticketRQ, integration);
 			String description = newDefect.getDescription();
 			Map<String, String> attachments = new HashMap<>();
