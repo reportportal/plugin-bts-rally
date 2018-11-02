@@ -16,6 +16,7 @@
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.epam.reportportal.commons.template.TemplateEngine;
+import com.epam.reportportal.commons.template.TemplateEngineProvider;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
@@ -76,7 +77,9 @@ public class RallyStrategy implements BtsExtension {
 	private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
 	private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
-	private Gson gson = new Gson();
+	private final Gson gson = new Gson();
+
+	private final TemplateEngine templateEngine;
 
 	@Autowired
 	private DataStoreService dataStorage;
@@ -84,8 +87,6 @@ public class RallyStrategy implements BtsExtension {
 	@Autowired
 	private TestItemRepository testItemRepository;
 
-	@Autowired
-	private TemplateEngine templateEngine;
 
 	@Autowired
 	private LogRepository logRepository;
@@ -96,6 +97,10 @@ public class RallyStrategy implements BtsExtension {
 			dataStorage
 	));
 
+	public RallyStrategy() {
+		templateEngine = new TemplateEngineProvider().get();
+
+	}
 
 	@Override
 	public boolean connectionTest(Integration integration) {
