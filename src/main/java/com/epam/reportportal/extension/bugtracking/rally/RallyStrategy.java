@@ -79,7 +79,7 @@ public class RallyStrategy implements BtsExtension {
 
 	private final Gson gson = new Gson();
 
-	private final TemplateEngine templateEngine;
+	private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
 
 	@Autowired
 	private DataStoreService dataStorage;
@@ -87,20 +87,13 @@ public class RallyStrategy implements BtsExtension {
 	@Autowired
 	private TestItemRepository testItemRepository;
 
-
 	@Autowired
 	private LogRepository logRepository;
 
-	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(
-			logRepository,
+	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
 			dataStorage
 	));
-
-	public RallyStrategy() {
-		templateEngine = new TemplateEngineProvider().get();
-
-	}
 
 	@Override
 	public boolean testConnection(Integration integration) {
@@ -217,7 +210,7 @@ public class RallyStrategy implements BtsExtension {
 		Ticket ticket = new Ticket();
 		String link =
 				BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get() + "/#/" + Ref.getOidFromRef(defect.getProject()
-				.getRef()) + "/detail/defect/" + defect.getObjectId();
+						.getRef()) + "/detail/defect/" + defect.getObjectId();
 		ticket.setId(defect.getFormattedId());
 		ticket.setSummary(defect.getName());
 		ticket.setTicketUrl(link);
