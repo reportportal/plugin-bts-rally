@@ -24,10 +24,12 @@ import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.ta.reportportal.binary.DataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
+import com.epam.ta.reportportal.entity.attachment.Attachment;
 import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.exception.ReportPortalException;
+import com.epam.ta.reportportal.filesystem.DataEncoder;
 import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
@@ -66,6 +68,7 @@ import java.util.function.Supplier;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
 import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static java.util.Optional.ofNullable;
 
 /**
  * @author Dzmitry_Kavalets
@@ -89,6 +92,9 @@ public class RallyStrategy implements BtsExtension {
 
 	@Autowired
 	private LogRepository logRepository;
+
+	@Autowired
+	private DataEncoder dataEncoder;
 
 	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
@@ -129,15 +135,16 @@ public class RallyStrategy implements BtsExtension {
 	@Override
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
-			List<InternalTicket.LogEntry> logs = ticketAssembler.get().apply(ticketRQ).getLogs();
-			logs = logs == null ? Lists.newArrayList() : logs;
+			List<InternalTicket.LogEntry> logs = ofNullable(ticketAssembler.get().apply(ticketRQ).getLogs()).orElseGet(Lists::newArrayList);
+
 			Defect newDefect = postDefect(restApi, ticketRQ, integration);
 			String description = newDefect.getDescription();
+
 			Map<String, String> attachments = new HashMap<>();
 			for (InternalTicket.LogEntry logEntry : logs) {
-				if (logEntry.getAttachment() != null) {
-					attachments.put(logEntry.getLog().getAttachment(),
-							String.valueOf(postImage(newDefect.getRef(), logEntry, restApi).getObjectId())
+				if (logEntry.isHasAttachment()) {
+					attachments.put(logEntry.getLog().getAttachment().getFileId(),
+							String.valueOf(postImage(newDefect.getRef(), logEntry.getLog().getAttachment(), restApi).getObjectId())
 					);
 				}
 			}
@@ -293,24 +300,26 @@ public class RallyStrategy implements BtsExtension {
 		}.getType());
 	}
 
-	private RallyObject postImage(String itemRef, InternalTicket.LogEntry log, RallyRestApi restApi) throws IOException {
-		String filename = log.getLog().getAttachment();
-		InputStream file = dataStorage.load(filename);
-		byte[] bytes = ByteStreams.toByteArray(file);
-		JsonObject attach = new JsonObject();
-		attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
-		CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
-		JsonObject attachment = new JsonObject();
-		attachment.addProperty(ARTIFACT, itemRef);
-		attachment.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-		attachment.addProperty(NAME, filename);
-		attachment.addProperty(DESCRIPTION, filename);
-		attachment.addProperty(CONTENT_TYPE, log.getLog().getContentType());
-		attachment.addProperty(SIZE, bytes.length);
-		CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachment);
-		CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
-		checkResponse(attachmentResponse);
-		return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+	private RallyObject postImage(String itemRef, Attachment attachment, RallyRestApi restApi) throws IOException {
+		String fileId = attachment.getFileId();
+		try (InputStream file = dataStorage.load(fileId)) {
+			byte[] bytes = ByteStreams.toByteArray(file);
+			JsonObject attach = new JsonObject();
+			attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
+			CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
+			JsonObject attachmentObject = new JsonObject();
+			attachmentObject.addProperty(ARTIFACT, itemRef);
+			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
+			attachmentObject.addProperty(NAME, dataEncoder.decode(fileId));
+			attachmentObject.addProperty(DESCRIPTION, fileId);
+			attachmentObject.addProperty(CONTENT_TYPE, attachment.getContentType());
+			attachmentObject.addProperty(SIZE, bytes.length);
+			CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
+			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
+			checkResponse(attachmentResponse);
+			return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+		}
+
 	}
 
 	private void checkResponse(Response response) {
