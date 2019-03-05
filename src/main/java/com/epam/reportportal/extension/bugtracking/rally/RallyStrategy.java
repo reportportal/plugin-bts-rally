@@ -103,7 +103,7 @@ public class RallyStrategy implements BtsExtension {
 	}
 
 	@Override
-	public boolean connectionTest(Integration integration) {
+	public boolean testConnection(Integration integration) {
 		String project = BtsConstants.PROJECT.getParam(integration.getParams(), String.class)
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally Project value cannot be NULL"));
 
