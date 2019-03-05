@@ -65,7 +65,7 @@ import java.util.function.Supplier;
 
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
-import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM;
+import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
 
 /**
  * @author Dzmitry_Kavalets
@@ -105,7 +105,7 @@ public class RallyStrategy implements BtsExtension {
 	@Override
 	public boolean testConnection(Integration integration) {
 		String project = BtsConstants.PROJECT.getParam(integration.getParams(), String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally Project value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally Project value cannot be NULL"));
 
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			QueryRequest rq = new QueryRequest(PROJECT);
@@ -128,7 +128,7 @@ public class RallyStrategy implements BtsExtension {
 			ticket = toTicket(optionalDefect.get(), integration);
 		} catch (Exception ex) {
 			LOGGER.error("Unable load ticket :" + ex.getMessage(), ex);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable load ticket :" + ex.getMessage(), ex);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable load ticket :" + ex.getMessage(), ex);
 		}
 		return Optional.of(ticket);
 	}
@@ -157,7 +157,7 @@ public class RallyStrategy implements BtsExtension {
 			return toTicket(newDefect, integration);
 		} catch (Exception e) {
 			LOGGER.error("Unable to submit ticket: " + e.getMessage(), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable to submit ticket: " + e.getMessage(), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket: " + e.getMessage(), e);
 		}
 	}
 
@@ -196,7 +196,7 @@ public class RallyStrategy implements BtsExtension {
 			return fields;
 		} catch (IOException | URISyntaxException e) {
 			LOGGER.error("Unable to load ticket fields: " + e.getMessage(), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable to load ticket fields: " + e.getMessage(), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to load ticket fields: " + e.getMessage(), e);
 		}
 	}
 
@@ -207,9 +207,9 @@ public class RallyStrategy implements BtsExtension {
 
 	public RallyRestApi getClient(IntegrationParams params) throws URISyntaxException {
 		String url = BtsConstants.URL.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "AccessKey value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "AccessKey value cannot be NULL"));
 		String apiKey = BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally project value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally project value cannot be NULL"));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
@@ -261,7 +261,7 @@ public class RallyStrategy implements BtsExtension {
 			return gson.fromJson(createResponse.getObject(), Defect.class);
 		} catch (Exception e) {
 			LOGGER.error("Errored request: {}", gson.toJson(createRequest));
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Errored request:" + gson.toJson(createRequest));
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Errored request:" + gson.toJson(createRequest));
 		}
 	}
 
@@ -322,7 +322,7 @@ public class RallyStrategy implements BtsExtension {
 
 	private void checkResponse(Response response) {
 		if (response.getErrors().length > 0) {
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
 					"Error during interacting with Rally: " + String.join(" ", response.getErrors())
 			);
 		}
@@ -330,7 +330,7 @@ public class RallyStrategy implements BtsExtension {
 
 	private String createDescription(PostTicketRQ ticketRQ, List<InternalTicket.LogEntry> itemLogs) {
 		TestItem testItem = testItemRepository.findById(ticketRQ.getTestItemId())
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
 						formattedSupplier("Test item {} not found", ticketRQ.getTestItemId())
 				));
 		HashMap<Object, Object> templateData = new HashMap<>();

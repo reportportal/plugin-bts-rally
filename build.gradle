@@ -58,8 +58,8 @@ dependencies {
         compileOnly 'com.github.reportportal:commons-model:aa3f069'
 
     } else {
-        compile 'com.github.reportportal:plugin-api:8b1a6f82'
-        compile 'com.github.reportportal:commons-model:aa3f069'
+        compile 'com.github.reportportal:plugin-api:a3f9e896'
+        compile 'com.github.reportportal:commons-model:480871f'
 
     }
     compile 'ch.qos.logback:logback-classic:1.2.3'
