@@ -109,7 +109,7 @@ public class RallyStrategy implements BtsExtension {
 
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			QueryRequest rq = new QueryRequest(PROJECT);
-			rq.setQueryFilter(new QueryFilter(OBJECT_ID, "=", project));
+			rq.setQueryFilter(new QueryFilter(NAME, "=", project));
 			return restApi.query(rq).wasSuccessful();
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
