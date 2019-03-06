@@ -45,6 +45,7 @@
                         <#else>
                         <p>
                             <a href="${logEntry.decodedFileName}">
+                                "${logEntry.decodedFileName}"
                             </a>
                             <br class="atl-forced-newline">
                         </p>
