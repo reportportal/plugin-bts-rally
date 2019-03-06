@@ -58,7 +58,7 @@ dependencies {
         compileOnly 'com.github.reportportal:commons-model:aa3f069'
 
     } else {
-        compile 'com.github.reportportal:plugin-api:74adabe6'
+        compile 'com.github.reportportal:plugin-api:514eb44b'
         compile 'com.github.reportportal:commons-model:480871f'
 
     }

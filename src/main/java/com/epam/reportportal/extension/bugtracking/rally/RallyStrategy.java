@@ -21,10 +21,10 @@ import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
+import com.epam.reportportal.extension.util.FileNameExtractor;
 import com.epam.ta.reportportal.binary.DataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
-import com.epam.ta.reportportal.entity.attachment.Attachment;
 import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
 import com.epam.ta.reportportal.entity.item.TestItem;
@@ -98,7 +98,8 @@ public class RallyStrategy implements BtsExtension {
 
 	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
-			dataStorage
+			dataStorage,
+			dataEncoder
 	));
 
 	@Override
@@ -141,13 +142,12 @@ public class RallyStrategy implements BtsExtension {
 			String description = newDefect.getDescription();
 
 			Map<String, String> attachments = new HashMap<>();
-			for (InternalTicket.LogEntry logEntry : logs) {
-				if (logEntry.isHasAttachment()) {
-					attachments.put(logEntry.getLog().getAttachment().getFileId(),
-							String.valueOf(postImage(newDefect.getRef(), logEntry.getLog().getAttachment(), restApi).getObjectId())
-					);
-				}
-			}
+			logs.stream().filter(InternalTicket.LogEntry::isHasAttachment).forEach(entry -> {
+				attachments.put(entry.getDecodedFileName(),
+						String.valueOf(postImage(newDefect.getRef(), entry.getLogAttachment(), restApi).getObjectId())
+				);
+			});
+
 			for (Map.Entry<String, String> binaryDataEntry : attachments.entrySet()) {
 				description = description.replace(binaryDataEntry.getKey(),
 						"/slm/attachment/" + binaryDataEntry.getValue() + "/" + binaryDataEntry.getKey()
@@ -300,7 +300,7 @@ public class RallyStrategy implements BtsExtension {
 		}.getType());
 	}
 
-	private RallyObject postImage(String itemRef, Attachment attachment, RallyRestApi restApi) throws IOException {
+	private RallyObject postImage(String itemRef, InternalTicket.LogEntry.LogAttachment attachment, RallyRestApi restApi) {
 		String fileId = attachment.getFileId();
 		try (InputStream file = dataStorage.load(fileId)) {
 			byte[] bytes = ByteStreams.toByteArray(file);
@@ -310,7 +310,7 @@ public class RallyStrategy implements BtsExtension {
 			JsonObject attachmentObject = new JsonObject();
 			attachmentObject.addProperty(ARTIFACT, itemRef);
 			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-			attachmentObject.addProperty(NAME, dataEncoder.decode(fileId));
+			attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
 			attachmentObject.addProperty(DESCRIPTION, fileId);
 			attachmentObject.addProperty(CONTENT_TYPE, attachment.getContentType());
 			attachmentObject.addProperty(SIZE, bytes.length);
@@ -318,6 +318,9 @@ public class RallyStrategy implements BtsExtension {
 			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
 			checkResponse(attachmentResponse);
 			return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+		} catch (IOException e) {
+			LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
 		}
 
 	}
@@ -337,7 +340,8 @@ public class RallyStrategy implements BtsExtension {
 				));
 		HashMap<Object, Object> templateData = new HashMap<>();
 		if (ticketRQ.getIsIncludeComments()) {
-			templateData.put("comments", testItem.getItemResults().getIssue().getIssueDescription());
+			ofNullable(testItem.getItemResults().getIssue()).ifPresent(issue -> templateData.put("comments", issue.getIssueDescription()));
+
 		}
 		if (ticketRQ.getBackLinks() != null) {
 			templateData.put("backLinks", ticketRQ.getBackLinks());
