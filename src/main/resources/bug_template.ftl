@@ -36,7 +36,7 @@
                     </#if>
                 <#--##    if URL provided to screen source-->
                     <#if logEntry.decodedFileName??>
-                        <#if logEntry.attachment.isImage>
+                        <#if logEntry.logAttachment.isImage>
                          <p><img src="${logEntry.decodedFileName}" align="absmiddle" border="0" height="366"><br class="atl-forced-newline">
                          </p>
                         <#else>
