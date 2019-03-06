@@ -142,11 +142,12 @@ public class RallyStrategy implements BtsExtension {
 			String description = newDefect.getDescription();
 
 			Map<String, String> attachments = new HashMap<>();
-			logs.stream().filter(InternalTicket.LogEntry::isHasAttachment).forEach(entry -> {
-				attachments.put(entry.getDecodedFileName(),
-						String.valueOf(postImage(newDefect.getRef(), entry.getLogAttachment(), restApi).getObjectId())
-				);
-			});
+			logs.stream()
+					.filter(InternalTicket.LogEntry::isHasAttachment)
+					.forEach(entry -> attachments.put(
+							entry.getDecodedFileName(),
+							String.valueOf(postImage(newDefect.getRef(), entry, restApi).getObjectId())
+					));
 
 			for (Map.Entry<String, String> binaryDataEntry : attachments.entrySet()) {
 				description = description.replace(binaryDataEntry.getKey(),
@@ -300,8 +301,8 @@ public class RallyStrategy implements BtsExtension {
 		}.getType());
 	}
 
-	private RallyObject postImage(String itemRef, InternalTicket.LogEntry.LogAttachment attachment, RallyRestApi restApi) {
-		String fileId = attachment.getFileId();
+	private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry, RallyRestApi restApi) {
+		String fileId = logEntry.getFileId();
 		try (InputStream file = dataStorage.load(fileId)) {
 			byte[] bytes = ByteStreams.toByteArray(file);
 			JsonObject attach = new JsonObject();
@@ -312,7 +313,7 @@ public class RallyStrategy implements BtsExtension {
 			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
 			attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
 			attachmentObject.addProperty(DESCRIPTION, fileId);
-			attachmentObject.addProperty(CONTENT_TYPE, attachment.getContentType());
+			attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
 			attachmentObject.addProperty(SIZE, bytes.length);
 			CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
 			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
