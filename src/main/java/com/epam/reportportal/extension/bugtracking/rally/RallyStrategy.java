@@ -21,6 +21,7 @@ import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
+import com.epam.reportportal.extension.util.FileNameExtractor;
 import com.epam.ta.reportportal.binary.DataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
@@ -28,6 +29,7 @@ import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.exception.ReportPortalException;
+import com.epam.ta.reportportal.filesystem.DataEncoder;
 import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
@@ -65,7 +67,8 @@ import java.util.function.Supplier;
 
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
-import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM;
+import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static java.util.Optional.ofNullable;
 
 /**
  * @author Dzmitry_Kavalets
@@ -79,7 +82,7 @@ public class RallyStrategy implements BtsExtension {
 
 	private final Gson gson = new Gson();
 
-	private final TemplateEngine templateEngine;
+	private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
 
 	@Autowired
 	private DataStoreService dataStorage;
@@ -87,25 +90,22 @@ public class RallyStrategy implements BtsExtension {
 	@Autowired
 	private TestItemRepository testItemRepository;
 
-
 	@Autowired
 	private LogRepository logRepository;
 
-	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(
-			logRepository,
+	@Autowired
+	private DataEncoder dataEncoder;
+
+	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
-			dataStorage
+			dataStorage,
+			dataEncoder
 	));
-
-	public RallyStrategy() {
-		templateEngine = new TemplateEngineProvider().get();
-
-	}
 
 	@Override
 	public boolean testConnection(Integration integration) {
 		String project = BtsConstants.PROJECT.getParam(integration.getParams(), String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally Project value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally Project value cannot be NULL"));
 
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			QueryRequest rq = new QueryRequest(PROJECT);
@@ -128,7 +128,7 @@ public class RallyStrategy implements BtsExtension {
 			ticket = toTicket(optionalDefect.get(), integration);
 		} catch (Exception ex) {
 			LOGGER.error("Unable load ticket :" + ex.getMessage(), ex);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable load ticket :" + ex.getMessage(), ex);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable load ticket :" + ex.getMessage(), ex);
 		}
 		return Optional.of(ticket);
 	}
@@ -136,18 +136,19 @@ public class RallyStrategy implements BtsExtension {
 	@Override
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
-			List<InternalTicket.LogEntry> logs = ticketAssembler.get().apply(ticketRQ).getLogs();
-			logs = logs == null ? Lists.newArrayList() : logs;
+			List<InternalTicket.LogEntry> logs = ofNullable(ticketAssembler.get().apply(ticketRQ).getLogs()).orElseGet(Lists::newArrayList);
+
 			Defect newDefect = postDefect(restApi, ticketRQ, integration);
 			String description = newDefect.getDescription();
+
 			Map<String, String> attachments = new HashMap<>();
-			for (InternalTicket.LogEntry logEntry : logs) {
-				if (logEntry.getAttachment() != null) {
-					attachments.put(logEntry.getLog().getAttachment(),
-							String.valueOf(postImage(newDefect.getRef(), logEntry, restApi).getObjectId())
-					);
-				}
-			}
+			logs.stream()
+					.filter(InternalTicket.LogEntry::isHasAttachment)
+					.forEach(entry -> attachments.put(
+							entry.getDecodedFileName(),
+							String.valueOf(postImage(newDefect.getRef(), entry, restApi).getObjectId())
+					));
+
 			for (Map.Entry<String, String> binaryDataEntry : attachments.entrySet()) {
 				description = description.replace(binaryDataEntry.getKey(),
 						"/slm/attachment/" + binaryDataEntry.getValue() + "/" + binaryDataEntry.getKey()
@@ -157,7 +158,7 @@ public class RallyStrategy implements BtsExtension {
 			return toTicket(newDefect, integration);
 		} catch (Exception e) {
 			LOGGER.error("Unable to submit ticket: " + e.getMessage(), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable to submit ticket: " + e.getMessage(), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket: " + e.getMessage(), e);
 		}
 	}
 
@@ -196,7 +197,7 @@ public class RallyStrategy implements BtsExtension {
 			return fields;
 		} catch (IOException | URISyntaxException e) {
 			LOGGER.error("Unable to load ticket fields: " + e.getMessage(), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Unable to load ticket fields: " + e.getMessage(), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to load ticket fields: " + e.getMessage(), e);
 		}
 	}
 
@@ -207,9 +208,9 @@ public class RallyStrategy implements BtsExtension {
 
 	public RallyRestApi getClient(IntegrationParams params) throws URISyntaxException {
 		String url = BtsConstants.URL.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "AccessKey value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "AccessKey value cannot be NULL"));
 		String apiKey = BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Rally project value cannot be NULL"));
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally project value cannot be NULL"));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
@@ -217,7 +218,7 @@ public class RallyStrategy implements BtsExtension {
 		Ticket ticket = new Ticket();
 		String link =
 				BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get() + "/#/" + Ref.getOidFromRef(defect.getProject()
-				.getRef()) + "/detail/defect/" + defect.getObjectId();
+						.getRef()) + "/detail/defect/" + defect.getObjectId();
 		ticket.setId(defect.getFormattedId());
 		ticket.setSummary(defect.getName());
 		ticket.setTicketUrl(link);
@@ -261,7 +262,7 @@ public class RallyStrategy implements BtsExtension {
 			return gson.fromJson(createResponse.getObject(), Defect.class);
 		} catch (Exception e) {
 			LOGGER.error("Errored request: {}", gson.toJson(createRequest));
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM, "Errored request:" + gson.toJson(createRequest));
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Errored request:" + gson.toJson(createRequest));
 		}
 	}
 
@@ -300,29 +301,34 @@ public class RallyStrategy implements BtsExtension {
 		}.getType());
 	}
 
-	private RallyObject postImage(String itemRef, InternalTicket.LogEntry log, RallyRestApi restApi) throws IOException {
-		String filename = log.getLog().getAttachment();
-		InputStream file = dataStorage.load(filename);
-		byte[] bytes = ByteStreams.toByteArray(file);
-		JsonObject attach = new JsonObject();
-		attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
-		CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
-		JsonObject attachment = new JsonObject();
-		attachment.addProperty(ARTIFACT, itemRef);
-		attachment.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-		attachment.addProperty(NAME, filename);
-		attachment.addProperty(DESCRIPTION, filename);
-		attachment.addProperty(CONTENT_TYPE, log.getLog().getContentType());
-		attachment.addProperty(SIZE, bytes.length);
-		CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachment);
-		CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
-		checkResponse(attachmentResponse);
-		return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+	private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry, RallyRestApi restApi) {
+		String fileId = logEntry.getFileId();
+		try (InputStream file = dataStorage.load(fileId)) {
+			byte[] bytes = ByteStreams.toByteArray(file);
+			JsonObject attach = new JsonObject();
+			attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
+			CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
+			JsonObject attachmentObject = new JsonObject();
+			attachmentObject.addProperty(ARTIFACT, itemRef);
+			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
+			attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
+			attachmentObject.addProperty(DESCRIPTION, fileId);
+			attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
+			attachmentObject.addProperty(SIZE, bytes.length);
+			CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
+			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
+			checkResponse(attachmentResponse);
+			return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+		} catch (IOException e) {
+			LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
+		}
+
 	}
 
 	private void checkResponse(Response response) {
 		if (response.getErrors().length > 0) {
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
+			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
 					"Error during interacting with Rally: " + String.join(" ", response.getErrors())
 			);
 		}
@@ -330,12 +336,13 @@ public class RallyStrategy implements BtsExtension {
 
 	private String createDescription(PostTicketRQ ticketRQ, List<InternalTicket.LogEntry> itemLogs) {
 		TestItem testItem = testItemRepository.findById(ticketRQ.getTestItemId())
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_EXTRERNAL_SYSTEM,
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
 						formattedSupplier("Test item {} not found", ticketRQ.getTestItemId())
 				));
 		HashMap<Object, Object> templateData = new HashMap<>();
 		if (ticketRQ.getIsIncludeComments()) {
-			templateData.put("comments", testItem.getItemResults().getIssue().getIssueDescription());
+			ofNullable(testItem.getItemResults().getIssue()).ifPresent(issue -> templateData.put("comments", issue.getIssueDescription()));
+
 		}
 		if (ticketRQ.getBackLinks() != null) {
 			templateData.put("backLinks", ticketRQ.getBackLinks());
