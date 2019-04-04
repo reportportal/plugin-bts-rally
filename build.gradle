@@ -54,11 +54,11 @@ description = 'EPAM Report portal. Rally Integration Plugin'
 
 dependencies {
     if (releaseMode) {
-        compileOnly 'com.epam.reportportal:plugin-api:c01be9b340'
+        compileOnly 'com.epam.reportportal:plugin-api:30f47d4'
         compileOnly 'com.github.reportportal:commons-model:aa3f069'
 
     } else {
-        compile 'com.github.reportportal:plugin-api:fbf67ae9'
+        compile 'com.github.reportportal:plugin-api:30f47d4'
         compile 'com.github.reportportal:commons-model:480871f'
 
     }

@@ -17,6 +17,9 @@ package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.epam.reportportal.commons.template.TemplateEngine;
 import com.epam.reportportal.commons.template.TemplateEngineProvider;
+import com.epam.reportportal.extension.IntegrationGroupEnum;
+import com.epam.reportportal.extension.PluginCommand;
+import com.epam.reportportal.extension.ReportPortalExtensionPoint;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
@@ -75,7 +78,7 @@ import static java.util.Optional.ofNullable;
  */
 @Extension
 @Component
-public class RallyStrategy implements BtsExtension {
+public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
 	private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
@@ -95,6 +98,21 @@ public class RallyStrategy implements BtsExtension {
 
 	@Autowired
 	private DataEncoder dataEncoder;
+
+	@Override
+	public List<String> getCommandNames() {
+		return Lists.newArrayList();
+	}
+
+	@Override
+	public PluginCommand getCommandToExecute(String commandName) {
+		return null;
+	}
+
+	@Override
+	public IntegrationGroupEnum getIntegrationGroup() {
+		return IntegrationGroupEnum.BTS;
+	}
 
 	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
@@ -144,8 +162,7 @@ public class RallyStrategy implements BtsExtension {
 			Map<String, String> attachments = new HashMap<>();
 			logs.stream()
 					.filter(InternalTicket.LogEntry::isHasAttachment)
-					.forEach(entry -> attachments.put(
-							entry.getDecodedFileName(),
+					.forEach(entry -> attachments.put(entry.getDecodedFileName(),
 							String.valueOf(postImage(newDefect.getRef(), entry, restApi).getObjectId())
 					));
 
