@@ -31,7 +31,7 @@ apply from: 'build-quality.gradle'
 
 project.ext {
     releaseMode = project.hasProperty("releaseMode")
-    pluginID = "RALLY"
+    pluginID = "rally"
     pluginsDir = "$buildDir/plugins"
 }
 
