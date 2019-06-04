@@ -33,10 +33,12 @@ import com.epam.ta.reportportal.entity.integration.IntegrationParams;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.filesystem.DataEncoder;
+import com.epam.ta.reportportal.ws.model.ErrorType;
 import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
 import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
 import com.epam.ta.reportportal.ws.model.externalsystem.Ticket;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
@@ -86,6 +88,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	private final Gson gson = new Gson();
 
 	private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
+
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	@Autowired
 	private DataStoreService dataStorage;
@@ -247,7 +252,17 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 		JsonObject newDefect = new JsonObject();
 		List<PostFormField> fields = ticketRQ.getFields();
 		List<PostFormField> savedFields = new ArrayList<>();
-		BtsConstants.DEFECT_FORM_FIELDS.getParam(externalSystem.getParams(), List.class).ifPresent(savedFields::addAll);
+		BtsConstants.DEFECT_FORM_FIELDS.getParam(externalSystem.getParams()).map(String::valueOf).ifPresent(integrationFields -> {
+			try {
+				savedFields.addAll(objectMapper.readValue(integrationFields,
+						objectMapper.getTypeFactory().constructParametricType(List.class, PostFormField.class)
+				));
+			} catch (IOException e) {
+				LOGGER.error("Unable to parse post form fields: ", e.getMessage());
+				throw new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_INTEGRATION, e);
+			}
+
+		});
 		for (PostFormField field : fields) {
 			// skip empty fields
 			if (!field.getValue().isEmpty()) {
