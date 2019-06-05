@@ -252,9 +252,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 		JsonObject newDefect = new JsonObject();
 		List<PostFormField> fields = ticketRQ.getFields();
 		List<PostFormField> savedFields = new ArrayList<>();
-		BtsConstants.DEFECT_FORM_FIELDS.getParam(externalSystem.getParams()).map(String::valueOf).ifPresent(integrationFields -> {
+		BtsConstants.DEFECT_FORM_FIELDS.getParam(externalSystem.getParams()).ifPresent(integrationFields -> {
 			try {
-				savedFields.addAll(objectMapper.readValue(integrationFields,
+				savedFields.addAll(objectMapper.readValue(objectMapper.writeValueAsBytes(integrationFields),
 						objectMapper.getTypeFactory().constructParametricType(List.class, PostFormField.class)
 				));
 			} catch (IOException e) {
