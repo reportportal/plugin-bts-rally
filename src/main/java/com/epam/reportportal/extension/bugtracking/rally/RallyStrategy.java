@@ -57,6 +57,7 @@ import com.rallydev.rest.util.Fetch;
 import com.rallydev.rest.util.QueryFilter;
 import com.rallydev.rest.util.Ref;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections.CollectionUtils;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -273,7 +274,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 		});
 		for (PostFormField field : fields) {
 			// skip empty fields
-			if (!field.getValue().isEmpty()) {
+			if (CollectionUtils.isNotEmpty(field.getValue())) {
 				String value = field.getValue().get(0);
 				for (PostFormField savedField : savedFields) {
 					if (savedField.getId().equalsIgnoreCase(field.getId())) {

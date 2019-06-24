@@ -39,7 +39,7 @@ dependencies {
         compile 'com.epam.reportportal:commons-model:5.0.0-BETA-3'
 
     } else {
-        compile 'com.github.reportportal:plugin-api:30f47d4'
+        compile 'com.github.reportportal:plugin-api:a8bd84aa'
         compile 'com.github.reportportal:commons-model:480871f'
 
     }
