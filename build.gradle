@@ -35,11 +35,13 @@ description = 'EPAM Report portal. Rally Integration Plugin'
 
 dependencies {
     if (releaseMode) {
-        compile('com.epam.reportportal:plugin-api:5.0.0-BETA-3')
+        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-3'
+        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-3'
         compile 'com.epam.reportportal:commons-model:5.0.0-BETA-3'
 
     } else {
-        compile 'com.github.reportportal:plugin-api:a8bd84aa'
+        implementation 'com.github.reportportal:plugin-api:a8bd84aa'
+        annotationProcessor 'com.github.reportportal:plugin-api:a8bd84aa'
         compile 'com.github.reportportal:commons-model:480871f'
 
     }
@@ -73,7 +75,7 @@ test {
 
 build.dependsOn jacocoTestReport
 
-wrapper{
+wrapper {
     gradleVersion = '5.4.1'
 }
 
