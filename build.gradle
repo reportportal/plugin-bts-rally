@@ -4,6 +4,7 @@ plugins {
     id "com.jfrog.bintray" version "1.8.4"
     id 'java'
     id 'jacoco'
+    id 'com.github.johnrengelman.shadow' version '5.1.0'
 }
 
 apply from: 'build-quality.gradle'
@@ -35,16 +36,19 @@ description = 'EPAM Report portal. Rally Integration Plugin'
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-3'
-        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-3'
-        compile 'com.epam.reportportal:commons-model:5.0.0-BETA-3'
+        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
+        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
+        compile 'com.epam.reportportal:commons-model:5.0.0-BETA-6'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:a8bd84aa'
-        annotationProcessor 'com.github.reportportal:plugin-api:a8bd84aa'
-        compile 'com.github.reportportal:commons-model:480871f'
+        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
+        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
+        compile 'com.github.reportportal:commons-model:5.0.0-BETA-6'
 
     }
+
+    compile group: 'com.rallydev.rest', name: 'rally-rest-api', version: '2.2.1'
+    
     compile 'ch.qos.logback:logback-classic:1.2.3'
     compile 'org.slf4j:slf4j-api:1.7.25'
 
@@ -56,8 +60,7 @@ dependencies {
     compile 'org.apache.tika:tika-core:1.14'
 
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.6'
-
-    testCompile group: 'org.springframework', name: 'spring-test', version: '5.0.7.RELEASE'
+    
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-all:2.0.2-beta'
@@ -89,6 +92,14 @@ jar {
                 "Plugin-Class": "com.epam.reportportal.extension.bugtracking.rally.RallyStrategyPlugin",
 //                "Plugin-Dependencies": ""
         )
+    }
+}
+
+shadowJar {
+    zip64 true
+    dependencies {
+        include(dependency('com.google.guava:guava'))
+        include(dependency('com.rallydev.rest:rally-rest-api'))
     }
 }
 
