@@ -41,8 +41,8 @@ dependencies {
         compile 'com.epam.reportportal:commons-model:5.0.0-BETA-6'
 
     } else {
-        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
-        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
+        implementation 'com.github.reportportal:plugin-api:a60d458'
+        annotationProcessor 'com.github.reportportal:plugin-api:a60d458'
         compile 'com.github.reportportal:commons-model:5.0.0-BETA-6'
 
     }
@@ -87,7 +87,7 @@ jar {
         attributes(
                 "Class-Path": configurations.compile.collect { it.getName() }.join(' '),
                 "Plugin-Id": "${pluginID}",
-                "Plugin-Version": "${project.version}",
+                "Plugin-Version": "${project.version}-last",
                 "Plugin-Provider": "Andrei Varabyeu",
                 "Plugin-Class": "com.epam.reportportal.extension.bugtracking.rally.RallyStrategyPlugin",
 //                "Plugin-Dependencies": ""
