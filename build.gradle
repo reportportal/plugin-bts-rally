@@ -87,7 +87,7 @@ jar {
         attributes(
                 "Class-Path": configurations.compile.collect { it.getName() }.join(' '),
                 "Plugin-Id": "${pluginID}",
-                "Plugin-Version": "${project.version}-last",
+                "Plugin-Version": "${project.version}",
                 "Plugin-Provider": "Andrei Varabyeu",
                 "Plugin-Class": "com.epam.reportportal.extension.bugtracking.rally.RallyStrategyPlugin",
 //                "Plugin-Dependencies": ""
