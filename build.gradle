@@ -8,8 +8,7 @@ plugins {
 }
 
 apply from: 'build-quality.gradle'
-apply from: 'https://raw.githubusercontent.com/reportportal/gradle-scripts/master/release-commons.gradle'
-
+apply from: 'release.gradle'
 
 project.ext {
     releaseMode = project.hasProperty("releaseMode")
