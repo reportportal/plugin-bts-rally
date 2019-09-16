@@ -89,6 +89,7 @@ jar {
                 "Plugin-Version": "${project.version}",
                 "Plugin-Provider": "Andrei Varabyeu",
                 "Plugin-Class": "com.epam.reportportal.extension.bugtracking.rally.RallyStrategyPlugin",
+                "Plugin-Service": "api"
 //                "Plugin-Dependencies": ""
         )
     }
