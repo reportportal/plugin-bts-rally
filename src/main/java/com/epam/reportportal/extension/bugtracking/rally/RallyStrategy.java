@@ -65,7 +65,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -240,8 +239,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	public RallyRestApi getClient(IntegrationParams params, PostTicketRQ postTicketRQ) throws URISyntaxException {
 		String url = BtsConstants.URL.getParam(params, String.class)
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally URL value cannot be NULL"));
-		String apiKey = ofNullable(postTicketRQ.getToken())
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "OAUTH key cannot be NULL"));
+		String apiKey = ofNullable(postTicketRQ.getToken()).orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
+				"OAUTH key cannot be NULL"
+		));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
@@ -344,27 +344,28 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry, RallyRestApi restApi) {
 		String fileId = logEntry.getFileId();
-		try (InputStream file = dataStorage.load(fileId)) {
-			byte[] bytes = ByteStreams.toByteArray(file);
-			JsonObject attach = new JsonObject();
-			attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
-			CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
-			JsonObject attachmentObject = new JsonObject();
-			attachmentObject.addProperty(ARTIFACT, itemRef);
-			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-			attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
-			attachmentObject.addProperty(DESCRIPTION, fileId);
-			attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
-			attachmentObject.addProperty(SIZE, bytes.length);
-			CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
-			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
-			checkResponse(attachmentResponse);
-			return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
-		} catch (IOException e) {
-			LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
-		}
-
+		return dataStorage.load(fileId).map(data -> {
+			try {
+				byte[] bytes = ByteStreams.toByteArray(data);
+				JsonObject attach = new JsonObject();
+				attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
+				CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
+				JsonObject attachmentObject = new JsonObject();
+				attachmentObject.addProperty(ARTIFACT, itemRef);
+				attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
+				attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
+				attachmentObject.addProperty(DESCRIPTION, fileId);
+				attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
+				attachmentObject.addProperty(SIZE, bytes.length);
+				CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
+				CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
+				checkResponse(attachmentResponse);
+				return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+			} catch (IOException e) {
+				LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
+				throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
+			}
+		}).orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Ticket attachment not found"));
 	}
 
 	private void checkResponse(Response response) {

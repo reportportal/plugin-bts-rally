@@ -40,9 +40,9 @@ dependencies {
         compile 'com.epam.reportportal:commons-model:5.0.0-BETA-6'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:a60d458'
-        annotationProcessor 'com.github.reportportal:plugin-api:a60d458'
-        compile 'com.github.reportportal:commons-model:5.0.0-BETA-6'
+        implementation 'com.github.reportportal:plugin-api:8cb1efe6'
+        annotationProcessor 'com.github.reportportal:plugin-api:8cb1efe6'
+        compile 'com.github.reportportal:commons-model:5.0.0-BETA-13'
 
     }
 
