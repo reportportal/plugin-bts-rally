@@ -25,7 +25,7 @@ import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.reportportal.extension.util.FileNameExtractor;
-import com.epam.ta.reportportal.binary.DataStoreService;
+import com.epam.ta.reportportal.binary.impl.AttachmentDataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.integration.Integration;
@@ -74,6 +74,7 @@ import java.util.function.Supplier;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
 import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -94,7 +95,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	private ObjectMapper objectMapper;
 
 	@Autowired
-	private DataStoreService dataStorage;
+	private AttachmentDataStoreService attachmentDataStoreService;
 
 	@Autowired
 	private TestItemRepository testItemRepository;
@@ -122,7 +123,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
-			dataStorage,
+			attachmentDataStoreService,
 			dataEncoder
 	));
 
@@ -240,8 +241,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	public RallyRestApi getClient(IntegrationParams params, PostTicketRQ postTicketRQ) throws URISyntaxException {
 		String url = BtsConstants.URL.getParam(params, String.class)
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally URL value cannot be NULL"));
-		String apiKey = ofNullable(postTicketRQ.getToken())
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "OAUTH key cannot be NULL"));
+		String apiKey = ofNullable(postTicketRQ.getToken()).orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
+				"OAUTH key cannot be NULL"
+		));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
@@ -344,27 +346,31 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry, RallyRestApi restApi) {
 		String fileId = logEntry.getFileId();
-		try (InputStream file = dataStorage.load(fileId)) {
-			byte[] bytes = ByteStreams.toByteArray(file);
-			JsonObject attach = new JsonObject();
-			attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
-			CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
-			JsonObject attachmentObject = new JsonObject();
-			attachmentObject.addProperty(ARTIFACT, itemRef);
-			attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-			attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
-			attachmentObject.addProperty(DESCRIPTION, fileId);
-			attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
-			attachmentObject.addProperty(SIZE, bytes.length);
-			CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
-			CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
-			checkResponse(attachmentResponse);
-			return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
-		} catch (IOException e) {
-			LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
-			throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
+		Optional<InputStream> fileOptional = attachmentDataStoreService.load(fileId);
+		if (fileOptional.isPresent()) {
+			try (InputStream file = fileOptional.get()) {
+				byte[] bytes = ByteStreams.toByteArray(file);
+				JsonObject attach = new JsonObject();
+				attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
+				CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
+				JsonObject attachmentObject = new JsonObject();
+				attachmentObject.addProperty(ARTIFACT, itemRef);
+				attachmentObject.addProperty(CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
+				attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
+				attachmentObject.addProperty(DESCRIPTION, fileId);
+				attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
+				attachmentObject.addProperty(SIZE, bytes.length);
+				CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
+				CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
+				checkResponse(attachmentResponse);
+				return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+			} catch (IOException e) {
+				LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
+				throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
+			}
+		} else {
+			throw new ReportPortalException(UNABLE_TO_LOAD_BINARY_DATA);
 		}
-
 	}
 
 	private void checkResponse(Response response) {
