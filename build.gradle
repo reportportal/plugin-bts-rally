@@ -35,14 +35,14 @@ description = 'EPAM Report portal. Rally Integration Plugin'
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
-        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-6'
-        compile 'com.epam.reportportal:commons-model:5.0.0-BETA-6'
+        implementation 'com.epam.reportportal:plugin-api:5.0.0-BETA-7'
+        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-BETA-7'
+        compile 'com.epam.reportportal:commons-model:5.0.0-BETA-13'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:8cb1efe6'
-        annotationProcessor 'com.github.reportportal:plugin-api:8cb1efe6'
-        compile 'com.github.reportportal:commons-model:5.0.0-BETA-13'
+        implementation 'com.github.reportportal:plugin-api:df630b6'
+        annotationProcessor 'com.github.reportportal:plugin-api:df630b6'
+        compile 'com.github.reportportal:commons-model:b629245'
 
     }
 

@@ -25,7 +25,7 @@ import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.reportportal.extension.util.FileNameExtractor;
-import com.epam.ta.reportportal.binary.DataStoreService;
+import com.epam.ta.reportportal.binary.impl.AttachmentDataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.integration.Integration;
@@ -65,6 +65,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -73,6 +74,7 @@ import java.util.function.Supplier;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.*;
 import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
 import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static com.epam.ta.reportportal.ws.model.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -93,7 +95,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	private ObjectMapper objectMapper;
 
 	@Autowired
-	private DataStoreService dataStorage;
+	private AttachmentDataStoreService attachmentDataStoreService;
 
 	@Autowired
 	private TestItemRepository testItemRepository;
@@ -121,7 +123,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(() -> new InternalTicketAssembler(logRepository,
 			testItemRepository,
-			dataStorage,
+			attachmentDataStoreService,
 			dataEncoder
 	));
 
@@ -344,9 +346,10 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry, RallyRestApi restApi) {
 		String fileId = logEntry.getFileId();
-		return dataStorage.load(fileId).map(data -> {
-			try {
-				byte[] bytes = ByteStreams.toByteArray(data);
+		Optional<InputStream> fileOptional = attachmentDataStoreService.load(fileId);
+		if (fileOptional.isPresent()) {
+			try (InputStream file = fileOptional.get()) {
+				byte[] bytes = ByteStreams.toByteArray(file);
 				JsonObject attach = new JsonObject();
 				attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
 				CreateResponse attachmentContentResponse = restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
@@ -365,7 +368,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 				LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()), e);
 				throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
 			}
-		}).orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Ticket attachment not found"));
+		} else {
+			throw new ReportPortalException(UNABLE_TO_LOAD_BINARY_DATA);
+		}
 	}
 
 	private void checkResponse(Response response) {
