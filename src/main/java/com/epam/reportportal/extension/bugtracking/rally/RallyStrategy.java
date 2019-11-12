@@ -107,8 +107,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	private DataEncoder dataEncoder;
 
 	@Override
-	public List<String> getCommandNames() {
-		return Lists.newArrayList();
+	public Map<String, ?> getPluginParams() {
+		return Collections.emptyMap();
 	}
 
 	@Override
