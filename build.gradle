@@ -26,14 +26,14 @@ targetCompatibility = 1.8
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.epam.reportportal:plugin-api:5.0.0-RC-2'
-        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-RC-2'
-        compile 'com.epam.reportportal:commons-model:5.0.0-RC-1'
+        implementation 'com.epam.reportportal:plugin-api:5.0.0-RC-5'
+        annotationProcessor 'com.epam.reportportal:plugin-api:5.0.0-RC-5'
+        compile 'com.epam.reportportal:commons-model:5.0.0-RC-5'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:40d7f90'
-        annotationProcessor 'com.github.reportportal:plugin-api:40d7f90'
-        compile 'com.github.reportportal:commons-model:ac99b1a'
+        implementation 'com.github.reportportal:plugin-api:5.0.0-RC-5'
+        annotationProcessor 'com.github.reportportal:plugin-api:5.0.0-RC-5'
+        compile 'com.github.reportportal:commons-model:5.0.0-RC-5'
     }
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
