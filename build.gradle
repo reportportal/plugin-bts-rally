@@ -16,9 +16,9 @@ project.ext {
 repositories {
     mavenCentral()
     maven { url "http://dl.bintray.com/epam/reportportal" }
-    if (!releaseMode) {
+    //if (!releaseMode) {
         maven { url 'https://jitpack.io' }
-    }
+    //}
 }
 
 sourceCompatibility = 1.8
