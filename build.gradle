@@ -4,21 +4,23 @@ plugins {
     id 'jacoco'
 }
 
-apply from: 'https://raw.githubusercontent.com/reportportal/gradle-scripts/5.0.0/build-quality.gradle'
-apply from: 'https://raw.githubusercontent.com/reportportal/gradle-scripts/5.0.0/release-fat.gradle'
-
 project.ext {
     releaseMode = project.hasProperty("releaseMode")
     pluginID = "rally"
     pluginsDir = "$buildDir/plugins"
 }
 
+def branch = releaseMode ? '5.1.0' : 'develop'
+apply from: "https://raw.githubusercontent.com/reportportal/gradle-scripts/$branch/build-quality.gradle"
+apply from: "https://raw.githubusercontent.com/reportportal/gradle-scripts/$branch/release-fat.gradle"
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
 repositories {
     mavenCentral()
     releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url 'https://jitpack.io' }
-
 }
-
 
 dependencyManagement {
     imports {
@@ -26,29 +28,27 @@ dependencyManagement {
     }
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 dependencies {
     if (releaseMode) {
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
-        compile 'com.epam.reportportal:commons-model'
+//        compile 'com.epam.reportportal:commons-model'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:5.0.0-RC-5'
-        annotationProcessor 'com.github.reportportal:plugin-api:5.0.0-RC-5'
-        compile 'com.github.reportportal:commons-model:5.0.0-RC-5'
+        implementation 'com.github.reportportal:plugin-api:8fe626d'
+        annotationProcessor 'com.github.reportportal:plugin-api:8fe626d'
+//        compile 'com.github.reportportal:commons-model:5.0.0-RC-5'
     }
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
     compile 'net.oauth.core:oauth:20090617'
     compile 'net.oauth.core:oauth-httpclient4:20090913'
     compile 'org.apache.tika:tika-core:1.14'
+    compile 'javax.inject:javax.inject:1'
 }
 
 wrapper {
-    gradleVersion = '5.4.1'
+    gradleVersion = '6.0'
 }
 
 jar {
