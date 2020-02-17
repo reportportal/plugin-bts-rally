@@ -10,12 +10,12 @@ project.ext {
     pluginsDir = "$buildDir/plugins"
 }
 
-def branch = releaseMode ? '5.1.0' : 'develop'
+def branch = releaseMode ? '5.1.0-RC' : 'develop'
 apply from: "https://raw.githubusercontent.com/reportportal/gradle-scripts/$branch/build-quality.gradle"
 apply from: "https://raw.githubusercontent.com/reportportal/gradle-scripts/$branch/release-fat.gradle"
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 
 repositories {
     mavenCentral()
