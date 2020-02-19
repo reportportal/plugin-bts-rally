@@ -58,6 +58,7 @@ import com.rallydev.rest.util.QueryFilter;
 import com.rallydev.rest.util.Ref;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
+import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	@Autowired
 	private DataEncoder dataEncoder;
+
+	@Autowired
+	private BasicTextEncryptor encryptor;
 
 	@Override
 	public Map<String, ?> getPluginParams() {
@@ -233,8 +237,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	public RallyRestApi getClient(IntegrationParams params) throws URISyntaxException {
 		String url = BtsConstants.URL.getParam(params, String.class)
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally URL value cannot be NULL"));
-		String apiKey = BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "OAUTH key cannot be NULL"));
+		String apiKey = encryptor.decrypt(BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
+				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "OAUTH key cannot be NULL")));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
