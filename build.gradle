@@ -4,51 +4,52 @@ plugins {
     id 'jacoco'
 }
 
-apply from: 'https://raw.githubusercontent.com/reportportal/gradle-scripts/5.0.0/build-quality.gradle'
-apply from: 'https://raw.githubusercontent.com/reportportal/gradle-scripts/5.0.0/release-fat.gradle'
-
 project.ext {
     releaseMode = project.hasProperty("releaseMode")
     pluginID = "rally"
     pluginsDir = "$buildDir/plugins"
 }
 
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' +
+        (releaseMode ? getProperty('scripts.version') : 'develop')
+
+apply from: scriptsUrl + '/release-fat.gradle'
+apply from: scriptsUrl + '/build-quality.gradle'
+
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
 repositories {
     mavenCentral()
     releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url 'https://jitpack.io' }
-
 }
-
 
 dependencyManagement {
     imports {
-        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:5.0.0' : 'com.github.reportportal:commons-bom:4b7ed8a')
+        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.github.reportportal:commons-bom:4b7ed8a')
     }
 }
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 dependencies {
     if (releaseMode) {
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
-        compile 'com.epam.reportportal:commons-model'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:5.0.0-RC-5'
-        annotationProcessor 'com.github.reportportal:plugin-api:5.0.0-RC-5'
-        compile 'com.github.reportportal:commons-model:5.0.0-RC-5'
+        implementation 'com.github.reportportal:plugin-api:8fe626d'
+        annotationProcessor 'com.github.reportportal:plugin-api:8fe626d'
     }
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
     compile 'net.oauth.core:oauth:20090617'
     compile 'net.oauth.core:oauth-httpclient4:20090913'
     compile 'org.apache.tika:tika-core:1.14'
+    compile 'javax.inject:javax.inject:1'
 }
 
 wrapper {
-    gradleVersion = '5.4.1'
+    gradleVersion = '6.0'
 }
 
 jar {
