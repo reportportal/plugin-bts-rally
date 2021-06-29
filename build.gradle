@@ -5,6 +5,8 @@ plugins {
 }
 
 project.ext {
+    publishRepo = "https://maven.pkg.github.com/reportportal/plugin-bts-rally"
+    dependencyRepos = ["plugin-api", "commons-bom"]
     releaseMode = project.hasProperty("releaseMode")
     pluginID = "rally"
     pluginsDir = "$buildDir/plugins"
@@ -14,6 +16,7 @@ def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/
         (releaseMode ? getProperty('scripts.version') : 'develop')
 
 apply from: scriptsUrl + '/release-fat.gradle'
+apply from: scriptsUrl + '/signing.gradle'
 apply from: scriptsUrl + '/build-quality.gradle'
 
 
@@ -22,7 +25,19 @@ targetCompatibility = JavaVersion.VERSION_11
 
 repositories {
     mavenCentral()
-    releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url 'https://jitpack.io' }
+    if (releaseMode) {
+        dependencyRepos.forEach { path ->
+            maven {
+                setUrl("https://maven.pkg.github.com/reportportal/${path}")
+                credentials {
+                    username = findProperty("githubUserName")
+                    password = findProperty("githubToken")
+                }
+            }
+        }
+    } else {
+        maven { url 'https://jitpack.io' }
+    }
 }
 
 dependencyManagement {
