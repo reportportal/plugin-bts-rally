@@ -56,7 +56,6 @@ dependencies {
         annotationProcessor 'com.github.reportportal:plugin-api:8fe626d'
     }
 
-
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
     compile 'net.oauth.core:oauth:20090617'
     compile 'net.oauth.core:oauth-httpclient4:20090913'
