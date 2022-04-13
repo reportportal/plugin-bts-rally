@@ -17,6 +17,7 @@ package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.epam.reportportal.commons.template.TemplateEngine;
 import com.epam.reportportal.commons.template.TemplateEngineProvider;
+import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.ReportPortalExtensionPoint;
@@ -116,8 +117,13 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 	}
 
 	@Override
-	public PluginCommand getCommandToExecute(String commandName) {
-		return null;
+	public CommonPluginCommand getCommonCommand(String commandName) {
+		throw new UnsupportedOperationException("Not working with commands");
+	}
+
+	@Override
+	public PluginCommand getIntegrationCommand(String commandName) {
+		throw new UnsupportedOperationException("Not working with commands");
 	}
 
 	@Override
