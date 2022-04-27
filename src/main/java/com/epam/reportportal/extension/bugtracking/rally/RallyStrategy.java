@@ -145,7 +145,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			QueryRequest rq = new QueryRequest(PROJECT);
 			rq.setQueryFilter(new QueryFilter(OBJECT_ID, "=", project));
-			return restApi.query(rq).wasSuccessful();
+			return restApi.query(rq).getTotalResultCount() > 0;
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			return false;
