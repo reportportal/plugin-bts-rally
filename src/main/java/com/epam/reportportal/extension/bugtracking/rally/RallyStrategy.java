@@ -170,7 +170,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	@Override
 	public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
-		try (RallyRestApi restApi = getClient(integration.getParams(), ticketRQ)) {
+		try (RallyRestApi restApi = getClient(integration.getParams())) {
 			List<InternalTicket.LogEntry> logs = ofNullable(ticketAssembler.get().apply(ticketRQ).getLogs()).orElseGet(Lists::newArrayList);
 
 			Defect newDefect = postDefect(restApi, ticketRQ, integration);
@@ -245,15 +245,6 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally URL value cannot be NULL"));
 		String apiKey = encryptor.decrypt(BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
 				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "OAUTH key cannot be NULL")));
-		return new RallyRestApi(new URI(url), apiKey);
-	}
-
-	public RallyRestApi getClient(IntegrationParams params, PostTicketRQ postTicketRQ) throws URISyntaxException {
-		String url = BtsConstants.URL.getParam(params, String.class)
-				.orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Rally URL value cannot be NULL"));
-		String apiKey = ofNullable(postTicketRQ.getToken()).orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-				"OAUTH key cannot be NULL"
-		));
 		return new RallyRestApi(new URI(url), apiKey);
 	}
 
