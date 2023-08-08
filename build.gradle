@@ -1,5 +1,5 @@
 plugins {
-    id "io.spring.dependency-management" version "1.0.8.RELEASE"
+    id "io.spring.dependency-management" version "1.0.9.RELEASE"
     id 'java'
     id 'jacoco'
 }
@@ -64,7 +64,7 @@ dependencies {
 }
 
 wrapper {
-    gradleVersion = '6.0'
+    gradleVersion = '5.4.1'
 }
 
 generatePomFileForShadowPublication { pom.packaging = "jar" }
@@ -83,6 +83,7 @@ jar {
 }
 
 shadowJar {
+    archiveClassifier.set(null)
     zip64 true
     dependencies {
         include(dependency('com.google.guava:guava'))
