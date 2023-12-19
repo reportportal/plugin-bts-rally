@@ -227,7 +227,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 					}
 					postFormField.setId(attributeDefinition.getElementName());
 					postFormField.setFieldName(attributeDefinition.getName());
-					postFormField.setIsRequired(attributeDefinition.isRequired());
+					postFormField.setRequired(attributeDefinition.isRequired());
 					postFormField.setFieldType(attributeDefinition.getType());
 					fields.add(postFormField);
 				}

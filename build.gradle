@@ -24,25 +24,17 @@ sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
 
 repositories {
-    mavenCentral()
-    if (releaseMode) {
-        dependencyRepos.forEach { path ->
-            maven {
-                setUrl("https://maven.pkg.github.com/reportportal/${path}")
-                credentials {
-                    username = findProperty("githubUserName")
-                    password = findProperty("githubToken")
-                }
-            }
-        }
-    } else {
+    maven { url "https://packages.atlassian.com/maven/repository/public" }
+    mavenCentral { url "https://repo1.maven.org/maven2" }
+
+    if (!releaseMode) {
         maven { url 'https://jitpack.io' }
     }
 }
 
 dependencyManagement {
     imports {
-        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.github.reportportal:commons-bom:5.7.0')
+        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.epam.reportportal:commons-bom:5.11.0')
     }
 }
 
@@ -52,8 +44,8 @@ dependencies {
         annotationProcessor 'com.epam.reportportal:plugin-api'
 
     } else {
-        implementation 'com.github.reportportal:plugin-api:5.7.0'
-        annotationProcessor 'com.github.reportportal:plugin-api:5.7.0'
+        implementation 'com.epam.reportportal:plugin-api'
+        annotationProcessor 'com.epam.reportportal:plugin-api'
     }
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
