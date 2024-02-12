@@ -86,6 +86,8 @@ import static java.util.Optional.ofNullable;
 @Component
 public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
+	private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
+	private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/Rally";
 	private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
 	private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
@@ -113,7 +115,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
 	@Override
 	public Map<String, ?> getPluginParams() {
-		return Collections.emptyMap();
+		Map<String, Object> params = new HashMap<>();
+		params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
+		return params;
 	}
 
 	@Override
