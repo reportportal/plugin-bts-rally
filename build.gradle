@@ -43,8 +43,8 @@ dependencies {
         annotationProcessor 'com.epam.reportportal:plugin-api'
 
     } else {
-        implementation 'com.epam.reportportal:plugin-api'
-        annotationProcessor 'com.epam.reportportal:plugin-api'
+        implementation 'com.github.reportportal:plugin-api:cc3c5c8e'
+        annotationProcessor 'com.github.reportportal:plugin-api:cc3c5c8e'
     }
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
