@@ -37,9 +37,9 @@ import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.S
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.STRING_VALUE;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE_DEFINITION;
-import static com.epam.ta.reportportal.commons.validation.Suppliers.formattedSupplier;
-import static com.epam.ta.reportportal.ws.reporting.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
-import static com.epam.ta.reportportal.ws.reporting.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
+import static com.epam.reportportal.rules.commons.validation.Suppliers.formattedSupplier;
+import static com.epam.reportportal.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static com.epam.reportportal.rules.exception.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
 import static java.util.Optional.ofNullable;
 
 import com.epam.reportportal.commons.template.TemplateEngine;
@@ -53,19 +53,19 @@ import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.reportportal.extension.util.FileNameExtractor;
+import com.epam.reportportal.model.externalsystem.AllowedValue;
+import com.epam.reportportal.model.externalsystem.PostFormField;
+import com.epam.reportportal.model.externalsystem.PostTicketRQ;
+import com.epam.reportportal.model.externalsystem.Ticket;
+import com.epam.reportportal.rules.exception.ErrorType;
+import com.epam.reportportal.rules.exception.ReportPortalException;
 import com.epam.ta.reportportal.binary.impl.AttachmentDataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.integration.Integration;
 import com.epam.ta.reportportal.entity.integration.IntegrationParams;
 import com.epam.ta.reportportal.entity.item.TestItem;
-import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.filesystem.DataEncoder;
-import com.epam.ta.reportportal.ws.model.externalsystem.AllowedValue;
-import com.epam.ta.reportportal.ws.model.externalsystem.PostFormField;
-import com.epam.ta.reportportal.ws.model.externalsystem.PostTicketRQ;
-import com.epam.ta.reportportal.ws.model.externalsystem.Ticket;
-import com.epam.ta.reportportal.ws.reporting.ErrorType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
@@ -316,7 +316,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
                 ));
           } catch (IOException e) {
             LOGGER.error("Unable to parse post form fields: ", e.getMessage());
-            throw new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_INTEGRATION, e);
+            throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, e);
           }
 
         });
