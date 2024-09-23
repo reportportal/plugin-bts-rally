@@ -33,19 +33,21 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.epam.reportportal:commons-bom:5.11.2')
+        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.epam.reportportal:commons-bom:5.12.1')
     }
 }
 
 dependencies {
     if (releaseMode) {
+        implementation 'com.epam.reportportal:commons-dao'
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
-
     } else {
-        implementation 'com.epam.reportportal:plugin-api'
-        annotationProcessor 'com.epam.reportportal:plugin-api'
+        implementation 'com.github.reportportal:commons-dao:acf1ec7'
+        implementation 'com.github.reportportal:plugin-api:188792e'
+        annotationProcessor 'com.github.reportportal:plugin-api:188792e'
     }
+    implementation 'org.hibernate:hibernate-core:5.6.15.Final'
 
     compile 'com.rallydev.rest:rally-rest-api:2.2.1'
     compile 'net.oauth.core:oauth:20090617'
