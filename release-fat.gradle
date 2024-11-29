@@ -1,0 +1,126 @@
+/*
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "com.github.johnrengelman.shadow:com.github.johnrengelman.shadow.gradle.plugin:8.1.1"
+        classpath "net.researchgate:gradle-release:3.0.2"
+    }
+}
+
+apply plugin: 'maven-publish'
+apply plugin: 'java'
+apply plugin: com.github.jengelman.gradle.plugins.shadow.ShadowPlugin
+apply plugin: net.researchgate.release.ReleasePlugin
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier.set('javadoc')
+    from javadoc.destinationDir
+}
+
+javadoc {
+    failOnError = false
+}
+
+def pomConfig = {
+    url "https://github.com/reportportal/${project.name}"
+    packaging 'jar'
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            name 'EPAM Systems'
+            email 'support@reportportal.io'
+            organization 'ReportPortal.io'
+            organizationUrl 'http://www.reportportal.io'
+        }
+    }
+    scm {
+        connection "scm:git:https://github.com/reportportal/${project.name}.git"
+        developerConnection "scm:git:ssh://git@github.com:reportportal/${project.name}.git"
+        url "https://github.com/reportportal/${project.name}/tree/master"
+    }
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+    archives shadowJar
+}
+
+project.ext.githubUserName = project.hasProperty('githubUserName') ? githubUserName : ""
+project.ext.githubToken = project.hasProperty('githubToken') ? githubToken : ""
+project.ext.publishRepo = project.hasProperty('publishRepo') ? publishRepo : ""
+
+publishing {
+    repositories {
+        maven {
+            name = "Github"
+            url = uri(publishRepo)
+            credentials {
+                username = githubUserName
+                password = githubToken
+            }
+        }
+    }
+
+    publications {
+        shadow(MavenPublication) { publication ->
+            project.shadow.component(publication)
+            
+            artifact project.tasks.javadocJar
+            artifact project.tasks.sourcesJar
+
+            pom {
+                name = "${project.name}"
+                description = "${project.description}"
+            }
+
+            pom.withXml {
+                def root = asNode()
+                root.dependencies.'*'.findAll() {
+                    it.scope.text() == 'runtime' && project.configurations.shadow.allDependencies.find { dep ->
+                        dep.name == it.artifactId.text()
+                    }
+                }.each() {
+                    it.scope*.value = 'compile'
+                }
+                root.children().last() + pomConfig
+            }
+
+            groupId 'com.epam.reportportal'
+            artifactId "$project.name"
+
+        }
+    }
+}
+
+afterReleaseBuild.dependsOn publish
