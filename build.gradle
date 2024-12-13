@@ -1,5 +1,5 @@
 plugins {
-    id "io.spring.dependency-management" version "1.0.9.RELEASE"
+    id "io.spring.dependency-management" version "1.1.4"
     id 'java'
     id 'jacoco'
 }
@@ -17,11 +17,12 @@ def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/
 
 apply from: scriptsUrl + '/release-fat.gradle'
 apply from: scriptsUrl + '/signing.gradle'
-apply from: scriptsUrl + '/build-quality.gradle'
 
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
 
 repositories {
     mavenCentral { url "https://repo1.maven.org/maven2" }
@@ -43,21 +44,21 @@ dependencies {
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
     } else {
-        implementation 'com.github.reportportal:commons-dao:acf1ec7'
-        implementation 'com.github.reportportal:plugin-api:188792e'
-        annotationProcessor 'com.github.reportportal:plugin-api:188792e'
+        implementation 'com.github.reportportal:commons-dao:adbb40e'
+        implementation 'com.github.reportportal:plugin-api:815c74a'
+        annotationProcessor 'com.github.reportportal:plugin-api:815c74a'
     }
     implementation 'org.hibernate:hibernate-core:5.6.15.Final'
 
-    compile 'com.rallydev.rest:rally-rest-api:2.2.1'
-    compile 'net.oauth.core:oauth:20090617'
-    compile 'net.oauth.core:oauth-httpclient4:20090913'
-    compile 'org.apache.tika:tika-core:1.14'
-    compile 'javax.inject:javax.inject:1'
+    implementation 'com.rallydev.rest:rally-rest-api:2.2.1'
+    implementation 'net.oauth.core:oauth:20090617'
+    implementation 'net.oauth.core:oauth-httpclient4:20090913'
+    implementation 'org.apache.tika:tika-core:1.14'
+    implementation 'javax.inject:javax.inject:1'
 }
 
 wrapper {
-    gradleVersion = '5.4.1'
+    gradleVersion = '8.10.2'
 }
 
 generatePomFileForShadowPublication { pom.packaging = "jar" }
@@ -65,8 +66,8 @@ generatePomFileForShadowPublication { pom.packaging = "jar" }
 jar {
     manifest {
         attributes(
-                "Class-Path": configurations.compile.collect { it.getName() }.join(' '),
-                "Plugin-Id": "${pluginID}",
+                "Class-Path": configurations.compileClasspath.collect { it.getName() }.join(' '),
+                "Plugin-Id": "${pluginId}",
                 "Plugin-Version": "${project.version}",
                 "Plugin-Provider": "Andrei Varabyeu",
                 "Plugin-Class": "com.epam.reportportal.extension.bugtracking.rally.RallyStrategyPlugin",
@@ -79,21 +80,19 @@ shadowJar {
     archiveClassifier.set(null)
     zip64 true
     dependencies {
-        include(dependency('com.google.guava:guava'))
         include(dependency('com.rallydev.rest:rally-rest-api'))
-        include(dependency('com.google.code.gson:gson'))
     }
 }
 
 task plugin(type: Jar) {
-    baseName = "plugin-${pluginID}"
+    getArchiveBaseName().set("plugin-${pluginId}")
     into('classes') {
         with jar
     }
     into('lib') {
-        from configurations.compile
+        from configurations.compileClasspath
     }
-    extension('zip')
+    archiveExtension.set('zip')
 }
 
 task assemblePlugin(type: Copy) {
