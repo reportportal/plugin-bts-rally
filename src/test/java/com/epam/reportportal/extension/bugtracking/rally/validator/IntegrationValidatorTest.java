@@ -29,18 +29,18 @@ class IntegrationValidatorTest {
 
   @ParameterizedTest
   @CsvSource(value = {
-      "rally,https://rally1.rallydev.com",
-      "rally,https://rally1.rallydev.com/"
+      "https://rally1.rallydev.com",
+      "https://rally1.rallydev.com/"
   }, delimiter = ',')
-  void validateThirdPartyUrl(String name, String url) {
+  void validateThirdPartyUrl(String url) {
     Assertions.assertDoesNotThrow(() ->
         IntegrationValidator.validateThirdPartyUrl(getIntegration(url)));
   }
 
   @ParameterizedTest
   @CsvSource(value = {
-      "rally,http://rally1.rallydev.com",
-      "rally,https://zloi.hacker.com"
+      "http://rally1.rallydev.com",
+      "https://zloi.hacker.com"
   }, delimiter = ',')
   void validateThirdPartyUrlFailed(String url) {
     Assertions.assertThrows(ReportPortalException.class, () ->
