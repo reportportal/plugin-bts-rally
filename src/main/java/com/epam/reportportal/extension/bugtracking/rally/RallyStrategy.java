@@ -52,6 +52,7 @@ import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.BtsExtension;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
+import com.epam.reportportal.extension.bugtracking.rally.validator.IntegrationValidator;
 import com.epam.reportportal.extension.util.FileNameExtractor;
 import com.epam.reportportal.model.externalsystem.AllowedValue;
 import com.epam.reportportal.model.externalsystem.PostFormField;
@@ -171,6 +172,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
         .orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
             "Rally Project value cannot be NULL"
         ));
+    IntegrationValidator.validateThirdPartyUrl(integration);
 
     try (RallyRestApi restApi = getClient(integration.getParams())) {
       QueryRequest rq = new QueryRequest(PROJECT);
