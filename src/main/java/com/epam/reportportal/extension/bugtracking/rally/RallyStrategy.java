@@ -98,6 +98,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
@@ -292,7 +293,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
   private Ticket toTicket(Defect defect, Integration externalSystem) {
     Ticket ticket = new Ticket();
-    String link = BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get() + "/#/"
+    String baseUrl = StringUtils.removeEnd(BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get(), "/");
+    String link =  baseUrl + "/#/"
         + Ref.getOidFromRef(defect.getProject().getRef()) + "/detail/defect/"
         + defect.getObjectId();
     ticket.setId(defect.getFormattedId());
