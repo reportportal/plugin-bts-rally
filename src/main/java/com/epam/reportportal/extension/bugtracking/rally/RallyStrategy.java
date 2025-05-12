@@ -119,7 +119,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
   private static final String NAME_FIELD = "name";
 
-  private static final String PLUGIN_NAME = "RALLY";
+  private static final String PLUGIN_NAME = "Rally";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
   private final Gson gson = new Gson();
