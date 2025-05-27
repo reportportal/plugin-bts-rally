@@ -116,6 +116,10 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/Rally";
   private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
+
+  private static final String NAME_FIELD = "name";
+
+  private static final String PLUGIN_NAME = "RALLY";
   private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
   private final Gson gson = new Gson();
@@ -144,6 +148,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
   public Map<String, ?> getPluginParams() {
     Map<String, Object> params = new HashMap<>();
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
+    params.put(NAME_FIELD, PLUGIN_NAME);
     return params;
   }
 
