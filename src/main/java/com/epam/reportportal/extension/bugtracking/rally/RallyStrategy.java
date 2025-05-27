@@ -98,6 +98,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
 import org.slf4j.Logger;
@@ -115,6 +116,11 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/Rally";
   private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
+
+  private static final String NAME_FIELD = "name";
+
+  private static final String PLUGIN_NAME = "Rally";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
 
   private final Gson gson = new Gson();
@@ -143,6 +149,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
   public Map<String, ?> getPluginParams() {
     Map<String, Object> params = new HashMap<>();
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
+    params.put(NAME_FIELD, PLUGIN_NAME);
     return params;
   }
 
@@ -292,7 +299,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
   private Ticket toTicket(Defect defect, Integration externalSystem) {
     Ticket ticket = new Ticket();
-    String link = BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get() + "/#/"
+    String baseUrl = StringUtils.removeEnd(BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get(), "/");
+    String link =  baseUrl + "/#/"
         + Ref.getOidFromRef(defect.getProject().getRef()) + "/detail/defect/"
         + defect.getObjectId();
     ticket.setId(defect.getFormattedId());
