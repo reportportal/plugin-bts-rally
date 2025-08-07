@@ -48,9 +48,9 @@ dependencies {
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
     } else {
-        implementation 'com.github.reportportal:commons-dao:1296d7c'
-        implementation 'com.github.reportportal:plugin-api:8874441'
-        annotationProcessor 'com.github.reportportal:plugin-api:8874441'
+        implementation 'com.github.reportportal:commons-dao:a434633'
+        implementation 'com.github.reportportal:plugin-api:a4324ce'
+        annotationProcessor 'com.github.reportportal:plugin-api:a4324ce'
     }
     implementation 'org.hibernate.orm:hibernate-core:6.6.5.Final'
 
