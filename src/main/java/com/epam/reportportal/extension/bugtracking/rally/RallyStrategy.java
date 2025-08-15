@@ -201,9 +201,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
       }
       ticket = toTicket(optionalDefect.get(), integration);
     } catch (Exception ex) {
-      LOGGER.error("Unable load ticket :" + ex.getMessage(), ex);
-      throw new ReportPortalException(
-          UNABLE_INTERACT_WITH_INTEGRATION, "Unable load ticket :" + ex.getMessage(), ex);
+      LOGGER.error("Unable load ticket :{}", ex.getMessage(), ex);
+      throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable load ticket");
     }
     return Optional.of(ticket);
   }
@@ -233,8 +232,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
       return toTicket(newDefect, integration);
     } catch (Exception e) {
       LOGGER.error("Unable to submit ticket: " + e.getMessage(), e);
-      throw new ReportPortalException(
-          UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket: " + e.getMessage(), e);
+      throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket");
     }
   }
 
@@ -310,8 +308,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
     return ticket;
   }
 
-  private Defect postDefect(RallyRestApi restApi, PostTicketRQ ticketRQ, Integration externalSystem)
-      throws IOException {
+  private Defect postDefect(RallyRestApi restApi, PostTicketRQ ticketRQ, Integration externalSystem) {
     JsonObject newDefect = new JsonObject();
     List<PostFormField> fields = ticketRQ.getFields();
     List<PostFormField> savedFields = new ArrayList<>();
@@ -324,7 +321,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
                         .constructParametricType(List.class, PostFormField.class)
                 ));
           } catch (IOException e) {
-            LOGGER.error("Unable to parse post form fields: ", e.getMessage());
+            LOGGER.error("Unable to parse post form fields: {}", e.getMessage());
             throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, e);
           }
 
@@ -430,7 +427,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
         checkResponse(attachmentResponse);
         return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
       } catch (IOException e) {
-        LOGGER.error("Unable to post ticket image: " + e.getMessage() + "\n" + Arrays.toString(
+        LOGGER.error("Unable to post ticket image: {}\n{}", e.getMessage(), Arrays.toString(
             e.getStackTrace()), e);
         throw new ReportPortalException(
             UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
