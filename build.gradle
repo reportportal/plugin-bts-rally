@@ -44,11 +44,11 @@ ext['junit-jupiter.version'] = "${junitVersion}"
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.github.reportportal:commons-dao:71ef80c'
+        implementation 'com.epam.reportportal:commons-dao'
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
     } else {
-        implementation 'com.github.reportportal:commons-dao:71ef80c'
+        implementation 'com.epam.reportportal:commons-dao'
         implementation 'com.epam.reportportal:plugin-api'
         annotationProcessor 'com.epam.reportportal:plugin-api'
     }
