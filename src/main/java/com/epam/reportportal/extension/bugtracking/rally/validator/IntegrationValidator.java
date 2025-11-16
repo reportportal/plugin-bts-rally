@@ -16,11 +16,11 @@
 
 package com.epam.reportportal.extension.bugtracking.rally.validator;
 
-import com.epam.reportportal.rules.commons.validation.BusinessRule;
-import com.epam.reportportal.rules.commons.validation.Suppliers;
-import com.epam.reportportal.rules.exception.ErrorType;
-import com.epam.ta.reportportal.commons.Predicates;
-import com.epam.ta.reportportal.entity.integration.Integration;
+import com.epam.reportportal.infrastructure.persistence.commons.Predicates;
+import com.epam.reportportal.infrastructure.persistence.entity.integration.Integration;
+import com.epam.reportportal.infrastructure.rules.commons.validation.BusinessRule;
+import com.epam.reportportal.infrastructure.rules.commons.validation.Suppliers;
+import com.epam.reportportal.infrastructure.rules.exception.ErrorType;
 
 /**
  * @author <a href="mailto:siarhei_hrabko@epam.com">Siarhei Hrabko</a>

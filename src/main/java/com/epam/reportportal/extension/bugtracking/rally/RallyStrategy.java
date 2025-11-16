@@ -37,13 +37,11 @@ import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.S
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.STRING_VALUE;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE;
 import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE_DEFINITION;
-import static com.epam.reportportal.rules.commons.validation.Suppliers.formattedSupplier;
-import static com.epam.reportportal.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
-import static com.epam.reportportal.rules.exception.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
+import static com.epam.reportportal.infrastructure.rules.commons.validation.Suppliers.formattedSupplier;
+import static com.epam.reportportal.infrastructure.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+import static com.epam.reportportal.infrastructure.rules.exception.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
 import static java.util.Optional.ofNullable;
 
-import com.epam.reportportal.commons.template.TemplateEngine;
-import com.epam.reportportal.commons.template.TemplateEngineProvider;
 import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.PluginCommand;
@@ -54,18 +52,20 @@ import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.reportportal.extension.bugtracking.rally.validator.IntegrationValidator;
 import com.epam.reportportal.extension.util.FileNameExtractor;
-import com.epam.reportportal.model.externalsystem.AllowedValue;
-import com.epam.reportportal.model.externalsystem.PostFormField;
-import com.epam.reportportal.model.externalsystem.PostTicketRQ;
-import com.epam.reportportal.model.externalsystem.Ticket;
-import com.epam.reportportal.rules.exception.ReportPortalException;
-import com.epam.ta.reportportal.binary.impl.AttachmentDataStoreService;
-import com.epam.ta.reportportal.dao.LogRepository;
-import com.epam.ta.reportportal.dao.TestItemRepository;
-import com.epam.ta.reportportal.entity.integration.Integration;
-import com.epam.ta.reportportal.entity.integration.IntegrationParams;
-import com.epam.ta.reportportal.entity.item.TestItem;
-import com.epam.ta.reportportal.filesystem.DataEncoder;
+import com.epam.reportportal.infrastructure.commons.template.TemplateEngine;
+import com.epam.reportportal.infrastructure.commons.template.TemplateEngineProvider;
+import com.epam.reportportal.infrastructure.model.externalsystem.AllowedValue;
+import com.epam.reportportal.infrastructure.model.externalsystem.PostFormField;
+import com.epam.reportportal.infrastructure.model.externalsystem.PostTicketRQ;
+import com.epam.reportportal.infrastructure.model.externalsystem.Ticket;
+import com.epam.reportportal.infrastructure.persistence.binary.impl.AttachmentDataStoreService;
+import com.epam.reportportal.infrastructure.persistence.dao.LogRepository;
+import com.epam.reportportal.infrastructure.persistence.dao.TestItemRepository;
+import com.epam.reportportal.infrastructure.persistence.entity.integration.Integration;
+import com.epam.reportportal.infrastructure.persistence.entity.integration.IntegrationParams;
+import com.epam.reportportal.infrastructure.persistence.entity.item.TestItem;
+import com.epam.reportportal.infrastructure.persistence.filesystem.DataEncoder;
+import com.epam.reportportal.infrastructure.rules.exception.ReportPortalException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
@@ -97,7 +97,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
@@ -297,8 +297,9 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
 
   private Ticket toTicket(Defect defect, Integration externalSystem) {
     Ticket ticket = new Ticket();
-    String baseUrl = StringUtils.removeEnd(BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get(), "/");
-    String link =  baseUrl + "/#/"
+    String baseUrl = StringUtils.removeEnd(BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get(),
+        "/");
+    String link = baseUrl + "/#/"
         + Ref.getOidFromRef(defect.getProject().getRef()) + "/detail/defect/"
         + defect.getObjectId();
     ticket.setId(defect.getFormattedId());

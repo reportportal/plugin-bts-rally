@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.google.gson.annotations.SerializedName;
@@ -22,58 +23,58 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Defect extends RallyObject {
 
-	@SerializedName("Name")
-	private String name;
+  @SerializedName("Name")
+  private String name;
 
-	@SerializedName("Project")
-	private Project project;
+  @SerializedName("Project")
+  private Project project;
 
-	@SerializedName("State")
-	private String state;
+  @SerializedName("State")
+  private String state;
 
-	@SerializedName("Description")
-	private String description;
+  @SerializedName("Description")
+  private String description;
 
-	@SerializedName("FormattedID")
-	private String formattedId;
+  @SerializedName("FormattedID")
+  private String formattedId;
 
-	public String getFormattedId() {
-		return formattedId;
-	}
+  public String getFormattedId() {
+    return formattedId;
+  }
 
-	public void setFormattedId(String formattedId) {
-		this.formattedId = formattedId;
-	}
+  public void setFormattedId(String formattedId) {
+    this.formattedId = formattedId;
+  }
 
-	public String getDescription() {
-		return description;
-	}
+  public String getDescription() {
+    return description;
+  }
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+  public void setDescription(String description) {
+    this.description = description;
+  }
 
-	public String getState() {
-		return state;
-	}
+  public String getState() {
+    return state;
+  }
 
-	public void setState(String state) {
-		this.state = state;
-	}
+  public void setState(String state) {
+    this.state = state;
+  }
 
-	public String getName() {
-		return name;
-	}
+  public String getName() {
+    return name;
+  }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+  public void setName(String name) {
+    this.name = name;
+  }
 
-	public Project getProject() {
-		return project;
-	}
+  public Project getProject() {
+    return project;
+  }
 
-	public void setProject(Project project) {
-		this.project = project;
-	}
+  public void setProject(Project project) {
+    this.project = project;
+  }
 }

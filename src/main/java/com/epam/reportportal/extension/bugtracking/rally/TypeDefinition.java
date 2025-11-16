@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.google.gson.annotations.SerializedName;
@@ -22,14 +23,14 @@ import com.google.gson.annotations.SerializedName;
  */
 public class TypeDefinition extends RallyObject {
 
-	@SerializedName("Attributes")
-	private AttributeDefinition attributeDefinition;
+  @SerializedName("Attributes")
+  private AttributeDefinition attributeDefinition;
 
-	public AttributeDefinition getAttributeDefinition() {
-		return attributeDefinition;
-	}
+  public AttributeDefinition getAttributeDefinition() {
+    return attributeDefinition;
+  }
 
-	public void setAttributeDefinition(AttributeDefinition attributeDefinition) {
-		this.attributeDefinition = attributeDefinition;
-	}
+  public void setAttributeDefinition(AttributeDefinition attributeDefinition) {
+    this.attributeDefinition = attributeDefinition;
+  }
 }

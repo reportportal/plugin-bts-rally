@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.google.gson.annotations.SerializedName;
@@ -21,80 +22,81 @@ import com.google.gson.annotations.SerializedName;
  * @author Dzmitry_Kavalets
  */
 public class RallyObject {
-	@SerializedName("_rallyAPIMajor")
-	private String rallyApiMajor;
 
-	@SerializedName("_rallyAPIMinor")
-	private String rallyApiMinor;
+  @SerializedName("_rallyAPIMajor")
+  private String rallyApiMajor;
 
-	@SerializedName("_ref")
-	private String ref;
+  @SerializedName("_rallyAPIMinor")
+  private String rallyApiMinor;
 
-	@SerializedName("_refObjectUUID")
-	private String refObjectUUID;
+  @SerializedName("_ref")
+  private String ref;
 
-	@SerializedName("_objectVersion")
-	private String objectVersion;
+  @SerializedName("_refObjectUUID")
+  private String refObjectUUID;
 
-	@SerializedName("_refObjectName")
-	private String refObjectName;
+  @SerializedName("_objectVersion")
+  private String objectVersion;
 
-	@SerializedName("ObjectID")
-	private long objectId;
+  @SerializedName("_refObjectName")
+  private String refObjectName;
 
-	public String getRallyApiMajor() {
-		return rallyApiMajor;
-	}
+  @SerializedName("ObjectID")
+  private long objectId;
 
-	public void setRallyApiMajor(String rallyApiMajor) {
-		this.rallyApiMajor = rallyApiMajor;
-	}
+  public String getRallyApiMajor() {
+    return rallyApiMajor;
+  }
 
-	public String getRallyApiMinor() {
-		return rallyApiMinor;
-	}
+  public void setRallyApiMajor(String rallyApiMajor) {
+    this.rallyApiMajor = rallyApiMajor;
+  }
 
-	public void setRallyApiMinor(String rallyApiMinor) {
-		this.rallyApiMinor = rallyApiMinor;
-	}
+  public String getRallyApiMinor() {
+    return rallyApiMinor;
+  }
 
-	public String getRef() {
-		return ref;
-	}
+  public void setRallyApiMinor(String rallyApiMinor) {
+    this.rallyApiMinor = rallyApiMinor;
+  }
 
-	public void setRef(String ref) {
-		this.ref = ref;
-	}
+  public String getRef() {
+    return ref;
+  }
 
-	public String getRefObjectUUID() {
-		return refObjectUUID;
-	}
+  public void setRef(String ref) {
+    this.ref = ref;
+  }
 
-	public void setRefObjectUUID(String refObjectUUID) {
-		this.refObjectUUID = refObjectUUID;
-	}
+  public String getRefObjectUUID() {
+    return refObjectUUID;
+  }
 
-	public String getObjectVersion() {
-		return objectVersion;
-	}
+  public void setRefObjectUUID(String refObjectUUID) {
+    this.refObjectUUID = refObjectUUID;
+  }
 
-	public void setObjectVersion(String objectVersion) {
-		this.objectVersion = objectVersion;
-	}
+  public String getObjectVersion() {
+    return objectVersion;
+  }
 
-	public String getRefObjectName() {
-		return refObjectName;
-	}
+  public void setObjectVersion(String objectVersion) {
+    this.objectVersion = objectVersion;
+  }
 
-	public void setRefObjectName(String refObjectName) {
-		this.refObjectName = refObjectName;
-	}
+  public String getRefObjectName() {
+    return refObjectName;
+  }
 
-	public long getObjectId() {
-		return objectId;
-	}
+  public void setRefObjectName(String refObjectName) {
+    this.refObjectName = refObjectName;
+  }
 
-	public void setObjectId(long objectId) {
-		this.objectId = objectId;
-	}
+  public long getObjectId() {
+    return objectId;
+  }
+
+  public void setObjectId(long objectId) {
+    this.objectId = objectId;
+  }
 }
