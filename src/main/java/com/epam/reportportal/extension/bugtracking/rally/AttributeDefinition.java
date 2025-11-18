@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.epam.reportportal.extension.bugtracking.rally;
 
 import com.google.gson.annotations.SerializedName;
@@ -22,80 +23,80 @@ import com.google.gson.annotations.SerializedName;
  */
 public class AttributeDefinition extends RallyObject {
 
-	@SerializedName("Count")
-	private int count;
+  @SerializedName("Count")
+  private int count;
 
-	@SerializedName("ElementName")
-	private String elementName;
+  @SerializedName("ElementName")
+  private String elementName;
 
-	@SerializedName("Name")
-	private String name;
+  @SerializedName("Name")
+  private String name;
 
-	@SerializedName("Required")
-	private boolean required;
+  @SerializedName("Required")
+  private boolean required;
 
-	@SerializedName("Type")
-	private String type;
+  @SerializedName("Type")
+  private String type;
 
-	@SerializedName("ReadOnly")
-	private boolean readOnly;
+  @SerializedName("ReadOnly")
+  private boolean readOnly;
 
-	@SerializedName("AllowedValues")
-	private AllowedAttributeValue allowedValue;
+  @SerializedName("AllowedValues")
+  private AllowedAttributeValue allowedValue;
 
-	public AllowedAttributeValue getAllowedValue() {
-		return allowedValue;
-	}
+  public AllowedAttributeValue getAllowedValue() {
+    return allowedValue;
+  }
 
-	public void setAllowedValue(AllowedAttributeValue allowedValue) {
-		this.allowedValue = allowedValue;
-	}
+  public void setAllowedValue(AllowedAttributeValue allowedValue) {
+    this.allowedValue = allowedValue;
+  }
 
-	public String getElementName() {
-		return elementName;
-	}
+  public String getElementName() {
+    return elementName;
+  }
 
-	public void setElementName(String elementName) {
-		this.elementName = elementName;
-	}
+  public void setElementName(String elementName) {
+    this.elementName = elementName;
+  }
 
-	public String getName() {
-		return name;
-	}
+  public String getName() {
+    return name;
+  }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+  public void setName(String name) {
+    this.name = name;
+  }
 
-	public boolean isRequired() {
-		return required;
-	}
+  public boolean isRequired() {
+    return required;
+  }
 
-	public void setRequired(boolean required) {
-		this.required = required;
-	}
+  public void setRequired(boolean required) {
+    this.required = required;
+  }
 
-	public String getType() {
-		return type;
-	}
+  public String getType() {
+    return type;
+  }
 
-	public void setType(String type) {
-		this.type = type;
-	}
+  public void setType(String type) {
+    this.type = type;
+  }
 
-	public boolean isReadOnly() {
-		return readOnly;
-	}
+  public boolean isReadOnly() {
+    return readOnly;
+  }
 
-	public void setReadOnly(boolean readOnly) {
-		this.readOnly = readOnly;
-	}
+  public void setReadOnly(boolean readOnly) {
+    this.readOnly = readOnly;
+  }
 
-	public int getCount() {
-		return count;
-	}
+  public int getCount() {
+    return count;
+  }
 
-	public void setCount(int count) {
-		this.count = count;
-	}
+  public void setCount(int count) {
+    this.count = count;
+  }
 }
