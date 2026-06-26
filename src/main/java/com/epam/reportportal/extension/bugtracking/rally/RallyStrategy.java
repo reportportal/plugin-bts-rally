@@ -16,151 +16,134 @@
 
 package com.epam.reportportal.extension.bugtracking.rally;
 
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ALLOWED_VALUES;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ARTIFACT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ATTACHMENT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ATTACHMENT_CONTENT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ATTRIBUTES;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.CONTENT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.CONTENT_TYPE;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.DEFECT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.DESCRIPTION;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.ELEMENT_NAME;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.FORMATTED_ID;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.NAME;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.OBJECT_ID;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.PROJECT;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.READ_ONLY;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.REF;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.REQUIRED;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.SIZE;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.STRING_VALUE;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE;
-import static com.epam.reportportal.extension.bugtracking.rally.RallyConstants.TYPE_DEFINITION;
-import static com.epam.reportportal.base.infrastructure.rules.commons.validation.Suppliers.formattedSupplier;
-import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
-import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorType.UNABLE_TO_LOAD_BINARY_DATA;
-import static java.util.Optional.ofNullable;
-
+import com.epam.reportportal.base.core.events.domain.PluginUploadedEvent;
+import com.epam.reportportal.base.infrastructure.persistence.binary.impl.AttachmentDataStoreService;
+import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationTypeRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.LogRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.TestItemRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.TicketRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
+import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
+import com.epam.reportportal.base.infrastructure.persistence.filesystem.DataEncoder;
 import com.epam.reportportal.extension.CommonPluginCommand;
 import com.epam.reportportal.extension.IntegrationGroupEnum;
+import com.epam.reportportal.extension.NamedPluginCommand;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.ReportPortalExtensionPoint;
-import com.epam.reportportal.extension.bugtracking.BtsConstants;
-import com.epam.reportportal.extension.bugtracking.BtsExtension;
-import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
-import com.epam.reportportal.extension.bugtracking.rally.validator.IntegrationValidator;
-import com.epam.reportportal.extension.util.FileNameExtractor;
-import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngine;
-import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngineProvider;
-import com.epam.reportportal.base.infrastructure.model.externalsystem.AllowedValue;
-import com.epam.reportportal.base.infrastructure.model.externalsystem.PostFormField;
-import com.epam.reportportal.base.infrastructure.model.externalsystem.PostTicketRQ;
-import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
-import com.epam.reportportal.base.infrastructure.persistence.binary.impl.AttachmentDataStoreService;
-import com.epam.reportportal.base.infrastructure.persistence.dao.LogRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.TestItemRepository;
-import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
-import com.epam.reportportal.base.infrastructure.persistence.entity.integration.IntegrationParams;
-import com.epam.reportportal.base.infrastructure.persistence.entity.item.TestItem;
-import com.epam.reportportal.base.infrastructure.persistence.filesystem.DataEncoder;
-import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
+import com.epam.reportportal.extension.bugtracking.rally.client.RallyClientProvider;
+import com.epam.reportportal.extension.bugtracking.rally.command.GetIssueCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.GetIssueFieldsCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.GetIssueTypesCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.PostTicketCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.RetrieveCreationParamsCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.RetrieveUpdateParamsCommand;
+import com.epam.reportportal.extension.bugtracking.rally.command.TestConnectionCommand;
+import com.epam.reportportal.extension.bugtracking.rally.event.plugin.PluginLoadedEventListener;
+import com.epam.reportportal.extension.bugtracking.rally.info.impl.PluginInfoProviderImpl;
+import com.epam.reportportal.extension.bugtracking.rally.utils.MemoizingSupplier;
+import com.epam.reportportal.extension.command.ExtensionCommand;
+import com.epam.reportportal.extension.util.RequestEntityConverter;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.Lists;
-import com.google.common.io.ByteStreams;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
-import com.rallydev.rest.RallyRestApi;
-import com.rallydev.rest.request.CreateRequest;
-import com.rallydev.rest.request.QueryRequest;
-import com.rallydev.rest.request.UpdateRequest;
-import com.rallydev.rest.response.CreateResponse;
-import com.rallydev.rest.response.QueryResponse;
-import com.rallydev.rest.response.Response;
-import com.rallydev.rest.response.UpdateResponse;
-import com.rallydev.rest.util.Fetch;
-import com.rallydev.rest.util.QueryFilter;
-import com.rallydev.rest.util.Ref;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
+import java.util.stream.Collectors;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.pf4j.Extension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.support.AbstractApplicationContext;
 
 /**
  * @author Dzmitry_Kavalets
  */
 @Extension
-@Component
-public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
+public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean {
 
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/Rally";
-  private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
+  private static final String PLUGIN_ID = "Rally";
 
-  private static final String NAME_FIELD = "name";
+  private final Supplier<Map<String, ExtensionCommand<?>>> pluginCommandMapping =
+      new MemoizingSupplier<>(this::getIntegrationExtensionCommands);
+  private final Supplier<Map<String, ExtensionCommand<?>>> commonPluginCommandMapping =
+      new MemoizingSupplier<>(this::getCommonExtensionCommands);
 
-  private static final String PLUGIN_NAME = "Rally";
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(RallyStrategy.class);
-
-  private final Gson gson = new Gson();
-
-  private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
-
-  @Autowired
-  private ObjectMapper objectMapper;
+  private final Supplier<ObjectMapper> objectMapperSupplier;
+  private final Supplier<RequestEntityConverter> requestEntityConverterSupplier;
+  private final Supplier<RallyClientProvider> clientProviderSupplier;
+  private final Supplier<InternalTicketAssembler> ticketAssemblerSupplier;
+  private final Supplier<ApplicationListener<PluginUploadedEvent>> pluginLoadedListenerSupplier;
 
   @Autowired
-  private AttachmentDataStoreService attachmentDataStoreService;
-
+  private ApplicationContext applicationContext;
+  @Autowired
+  private IntegrationTypeRepository integrationTypeRepository;
+  @Autowired
+  private IntegrationRepository integrationRepository;
+  @Autowired
+  private TicketRepository ticketRepository;
+  @Autowired
+  private ProjectRepository projectRepository;
+  @Autowired
+  private ProjectUserRepository projectUserRepository;
+  @Autowired
+  private OrganizationRepository organizationRepository;
+  @Autowired
+  private OrganizationUserRepository organizationUserRepository;
   @Autowired
   private TestItemRepository testItemRepository;
-
   @Autowired
   private LogRepository logRepository;
-
+  @Autowired
+  private AttachmentDataStoreService attachmentDataStoreService;
   @Autowired
   private DataEncoder dataEncoder;
-
+  @Autowired
+  private ObjectMapper objectMapper;
   @Autowired
   private BasicTextEncryptor encryptor;
+
+  public RallyStrategy(Map<String, Object> initParams) {
+    objectMapperSupplier = new MemoizingSupplier<>(() -> objectMapper);
+    requestEntityConverterSupplier =
+        new MemoizingSupplier<>(() -> new RequestEntityConverter(objectMapper));
+    clientProviderSupplier = new MemoizingSupplier<>(() -> new RallyClientProvider(encryptor));
+    ticketAssemblerSupplier = new MemoizingSupplier<>(
+        () -> new InternalTicketAssembler(logRepository, testItemRepository,
+            attachmentDataStoreService, dataEncoder));
+    pluginLoadedListenerSupplier = new MemoizingSupplier<>(
+        () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository,
+            integrationRepository, new PluginInfoProviderImpl()));
+  }
 
   @Override
   public Map<String, ?> getPluginParams() {
     Map<String, Object> params = new HashMap<>();
+    params.put(ALLOWED_COMMANDS, new ArrayList<>(pluginCommandMapping.get().keySet()));
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
-    params.put(NAME_FIELD, PLUGIN_NAME);
+    params.put(COMMON_COMMANDS, new ArrayList<>(commonPluginCommandMapping.get().keySet()));
     return params;
   }
 
   @Override
-  public CommonPluginCommand getCommonCommand(String commandName) {
-    throw new UnsupportedOperationException("Not working with commands");
+  public PluginCommand<?> getIntegrationCommand(String commandName) {
+    return null;
   }
 
   @Override
-  public PluginCommand getIntegrationCommand(String commandName) {
-    throw new UnsupportedOperationException("Not working with commands");
+  public CommonPluginCommand<?> getCommonCommand(String commandName) {
+    return null;
   }
 
   @Override
@@ -168,311 +151,57 @@ public class RallyStrategy implements ReportPortalExtensionPoint, BtsExtension {
     return IntegrationGroupEnum.BTS;
   }
 
-  private Supplier<InternalTicketAssembler> ticketAssembler = Suppliers.memoize(
-      () -> new InternalTicketAssembler(logRepository, testItemRepository,
-          attachmentDataStoreService, dataEncoder
-      ));
+  @PostConstruct
+  public void createIntegration() {
+    initListeners();
+  }
 
-  @Override
-  public boolean testConnection(Integration integration) {
-    String project = BtsConstants.PROJECT.getParam(integration.getParams(), String.class)
-        .orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-            "Rally Project value cannot be NULL"
-        ));
-    IntegrationValidator.validateThirdPartyUrl(integration);
-
-    try (RallyRestApi restApi = getClient(integration.getParams())) {
-      QueryRequest rq = new QueryRequest(PROJECT);
-      rq.setQueryFilter(new QueryFilter(OBJECT_ID, "=", project));
-      return restApi.query(rq).getTotalResultCount() > 0;
-    } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
-      return false;
-    }
+  private void initListeners() {
+    ApplicationEventMulticaster applicationEventMulticaster = applicationContext.getBean(
+        AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+        ApplicationEventMulticaster.class);
+    applicationEventMulticaster.addApplicationListener(pluginLoadedListenerSupplier.get());
   }
 
   @Override
-  public Optional<Ticket> getTicket(final String id, Integration integration) {
-    Ticket ticket;
-    try (RallyRestApi restApi = getClient(integration.getParams())) {
-      Optional<Defect> optionalDefect = findDefect(restApi, id);
-      if (!optionalDefect.isPresent()) {
-        return Optional.empty();
-      }
-      ticket = toTicket(optionalDefect.get(), integration);
-    } catch (Exception ex) {
-      LOGGER.error("Unable load ticket :{}", ex.getMessage(), ex);
-      throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable load ticket");
-    }
-    return Optional.of(ticket);
+  public void destroy() {
+    removeListeners();
+  }
+
+  private void removeListeners() {
+    ApplicationEventMulticaster applicationEventMulticaster = applicationContext.getBean(
+        AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+        ApplicationEventMulticaster.class);
+    applicationEventMulticaster.removeApplicationListener(pluginLoadedListenerSupplier.get());
   }
 
   @Override
-  public Ticket submitTicket(final PostTicketRQ ticketRQ, Integration integration) {
-    try (RallyRestApi restApi = getClient(integration.getParams())) {
-      List<InternalTicket.LogEntry> logs =
-          ofNullable(ticketAssembler.get().apply(ticketRQ).getLogs()).orElseGet(
-              Lists::newArrayList);
-
-      Defect newDefect = postDefect(restApi, ticketRQ, integration);
-      String description = newDefect.getDescription();
-
-      Map<String, String> attachments = new HashMap<>();
-      logs.stream().filter(InternalTicket.LogEntry::isHasAttachment).forEach(
-          entry -> attachments.put(entry.getDecodedFileName(),
-              String.valueOf(postImage(newDefect.getRef(), entry, restApi).getObjectId())
-          ));
-
-      for (Map.Entry<String, String> binaryDataEntry : attachments.entrySet()) {
-        description = description.replace(binaryDataEntry.getKey(),
-            "/slm/attachment/" + binaryDataEntry.getValue() + "/" + binaryDataEntry.getKey()
-        );
-      }
-      updateDescription(description, newDefect, restApi);
-      return toTicket(newDefect, integration);
-    } catch (Exception e) {
-      LOGGER.error("Unable to submit ticket: " + e.getMessage(), e);
-      throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket");
-    }
+  public Map<String, ExtensionCommand<?>> getCommonExtensionCommands() {
+    List<ExtensionCommand<?>> commands = new ArrayList<>();
+    commands.add(new RetrieveCreationParamsCommand(projectRepository, organizationUserRepository,
+        organizationRepository, projectUserRepository));
+    commands.add(new RetrieveUpdateParamsCommand(projectRepository, organizationUserRepository,
+        organizationRepository, projectUserRepository));
+    commands.add(new GetIssueCommand(clientProviderSupplier.get(), ticketRepository,
+        integrationRepository, projectRepository, organizationUserRepository, organizationRepository,
+        projectUserRepository));
+    return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));
   }
 
   @Override
-  public List<PostFormField> getTicketFields(final String ticketType, Integration details) {
-
-    try (RallyRestApi restApi = getClient(details.getParams())) {
-      ArrayList<PostFormField> fields = new ArrayList<>();
-      List<AttributeDefinition> attributeDefinitions = findDefectAttributeDefinitions(restApi);
-      for (AttributeDefinition attributeDefinition : attributeDefinitions) {
-        if (!attributeDefinition.isReadOnly()) {
-          PostFormField postFormField = new PostFormField();
-          // load predefined values
-          if (attributeDefinition.getAllowedValue().getCount() > 0) {
-            List<AllowedValue> definedValues = new ArrayList<>();
-            List<AllowedAttributeValue> allowedAttributeValues =
-                findAllowedAttributeValues(restApi, attributeDefinition);
-            for (AllowedAttributeValue allowedAttributeValue : allowedAttributeValues) {
-              AllowedValue allowedValue = new AllowedValue();
-              if (allowedAttributeValue.getStringValue() != null
-                  && !allowedAttributeValue.getStringValue().isEmpty()) {
-                allowedValue.setValueName(allowedAttributeValue.getStringValue());
-                if (!"null".equals(allowedAttributeValue.getRef())) {
-                  allowedValue.setValueId(Ref.getRelativeRef(allowedAttributeValue.getRef()));
-                }
-                definedValues.add(allowedValue);
-              }
-            }
-            postFormField.setDefinedValues(definedValues);
-          }
-          postFormField.setId(attributeDefinition.getElementName());
-          postFormField.setFieldName(attributeDefinition.getName());
-          postFormField.setIsRequired(attributeDefinition.isRequired());
-          postFormField.setFieldType(attributeDefinition.getType());
-          fields.add(postFormField);
-        }
-      }
-      return fields;
-    } catch (IOException | URISyntaxException e) {
-      LOGGER.error("Unable to load ticket fields: " + e.getMessage(), e);
-      throw new ReportPortalException(
-          UNABLE_INTERACT_WITH_INTEGRATION, "Unable to load ticket fields: " + e.getMessage(), e);
-    }
-  }
-
-  @Override
-  public List<String> getIssueTypes(Integration integration) {
-    return Collections.singletonList(DEFECT);
-  }
-
-  public RallyRestApi getClient(IntegrationParams params) throws URISyntaxException {
-    String url = BtsConstants.URL.getParam(params, String.class).orElseThrow(
-        () -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-            "Rally URL value cannot be NULL"
-        ));
-    String apiKey = encryptor.decrypt(BtsConstants.OAUTH_ACCESS_KEY.getParam(params, String.class)
-        .orElseThrow(() -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-            "OAUTH key cannot be NULL"
-        )));
-    return new RallyRestApi(new URI(url), apiKey);
-  }
-
-  private Ticket toTicket(Defect defect, Integration externalSystem) {
-    Ticket ticket = new Ticket();
-    String baseUrl = StringUtils.removeEnd(BtsConstants.URL.getParam(externalSystem.getParams(), String.class).get(),
-        "/");
-    String link = baseUrl + "/#/"
-        + Ref.getOidFromRef(defect.getProject().getRef()) + "/detail/defect/"
-        + defect.getObjectId();
-    ticket.setId(defect.getFormattedId());
-    ticket.setSummary(defect.getName());
-    ticket.setTicketUrl(link);
-    ticket.setStatus(defect.getState());
-    return ticket;
-  }
-
-  private Defect postDefect(RallyRestApi restApi, PostTicketRQ ticketRQ, Integration externalSystem) {
-    JsonObject newDefect = new JsonObject();
-    List<PostFormField> fields = ticketRQ.getFields();
-    List<PostFormField> savedFields = new ArrayList<>();
-    BtsConstants.DEFECT_FORM_FIELDS.getParam(externalSystem.getParams())
-        .ifPresent(integrationFields -> {
-          try {
-            savedFields.addAll(
-                objectMapper.readValue(objectMapper.writeValueAsBytes(integrationFields),
-                    objectMapper.getTypeFactory()
-                        .constructParametricType(List.class, PostFormField.class)
-                ));
-          } catch (IOException e) {
-            LOGGER.error("Unable to parse post form fields: {}", e.getMessage());
-            throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, e);
-          }
-
-        });
-    for (PostFormField field : fields) {
-      // skip empty fields
-      if (CollectionUtils.isNotEmpty(field.getValue())) {
-        String value = field.getValue().get(0);
-        for (PostFormField savedField : savedFields) {
-          if (savedField.getId().equalsIgnoreCase(field.getId())) {
-            List<AllowedValue> definedValues = savedField.getDefinedValues();
-            if (definedValues != null) {
-              for (AllowedValue definedValue : definedValues) {
-                if (definedValue.getValueName().equals(field.getValue().get(0))
-                    && definedValue.getValueId() != null) {
-                  value = definedValue.getValueId();
-                }
-              }
-            }
-          }
-        }
-        newDefect.addProperty(field.getId(), value);
-      }
-    }
-
-    String description =
-        createDescription(ticketRQ, ticketAssembler.get().apply(ticketRQ).getLogs());
-    newDefect.addProperty(DESCRIPTION, newDefect.get(DESCRIPTION) != null ?
-        (newDefect.get(DESCRIPTION).getAsString() + "<br>" + description) : description);
-    CreateRequest createRequest = new CreateRequest(DEFECT, newDefect);
-    try {
-      CreateResponse createResponse = restApi.create(createRequest);
-      checkResponse(createResponse);
-      return gson.fromJson(createResponse.getObject(), Defect.class);
-    } catch (Exception e) {
-      LOGGER.error("Errored request: {}", gson.toJson(createRequest));
-      throw new ReportPortalException(
-          UNABLE_INTERACT_WITH_INTEGRATION, "Errored request:" + gson.toJson(createRequest));
-    }
-  }
-
-  private Optional<Defect> findDefect(RallyRestApi restApi, String id) throws IOException {
-    QueryRequest rq = new QueryRequest(DEFECT);
-    rq.setQueryFilter(new QueryFilter(FORMATTED_ID, "=", id));
-    QueryResponse rs = restApi.query(rq);
-    if (!rs.wasSuccessful()) {
-      return Optional.empty();
-    }
-    List<Defect> defects = gson.fromJson(rs.getResults(), new TypeToken<List<Defect>>() {
-    }.getType());
-    return defects.stream().findAny();
-  }
-
-  private List<AttributeDefinition> findDefectAttributeDefinitions(RallyRestApi restApi)
-      throws IOException {
-    QueryRequest typeDefRequest = new QueryRequest(TYPE_DEFINITION);
-    typeDefRequest.setFetch(new Fetch(OBJECT_ID, ATTRIBUTES));
-    typeDefRequest.setQueryFilter(new QueryFilter(NAME, "=", DEFECT));
-    QueryResponse typeDefQueryResponse = restApi.query(typeDefRequest);
-    JsonObject typeDefJsonObject = typeDefQueryResponse.getResults().get(0).getAsJsonObject();
-    QueryRequest attributeRequest = new QueryRequest((JsonObject) gson.toJsonTree(
-        gson.fromJson(typeDefJsonObject, TypeDefinition.class).getAttributeDefinition()));
-    attributeRequest.setFetch(
-        new Fetch(ALLOWED_VALUES, ELEMENT_NAME, NAME, REQUIRED, TYPE, OBJECT_ID, READ_ONLY));
-    QueryResponse attributesQueryResponse = restApi.query(attributeRequest);
-    return gson.fromJson(
-        attributesQueryResponse.getResults(), new TypeToken<List<AttributeDefinition>>() {
-        }.getType());
-  }
-
-  private List<AllowedAttributeValue> findAllowedAttributeValues(RallyRestApi restApi,
-      AttributeDefinition attributeDefinition) throws IOException {
-    QueryRequest allowedValuesRequest =
-        new QueryRequest((JsonObject) gson.toJsonTree(attributeDefinition.getAllowedValue()));
-    allowedValuesRequest.setFetch(new Fetch(STRING_VALUE));
-    QueryResponse allowedValuesResponse = restApi.query(allowedValuesRequest);
-    return gson.fromJson(
-        allowedValuesResponse.getResults(), new TypeToken<List<AllowedAttributeValue>>() {
-        }.getType());
-  }
-
-  private RallyObject postImage(String itemRef, InternalTicket.LogEntry logEntry,
-      RallyRestApi restApi) {
-    String fileId = logEntry.getFileId();
-    Optional<InputStream> fileOptional = attachmentDataStoreService.load(fileId);
-    if (fileOptional.isPresent()) {
-      try (InputStream file = fileOptional.get()) {
-        byte[] bytes = ByteStreams.toByteArray(file);
-        JsonObject attach = new JsonObject();
-        attach.addProperty(CONTENT, Base64.encodeBase64String(bytes));
-        CreateResponse attachmentContentResponse =
-            restApi.create(new CreateRequest(ATTACHMENT_CONTENT, attach));
-        JsonObject attachmentObject = new JsonObject();
-        attachmentObject.addProperty(ARTIFACT, itemRef);
-        attachmentObject.addProperty(
-            CONTENT, attachmentContentResponse.getObject().get(REF).getAsString());
-        attachmentObject.addProperty(NAME, FileNameExtractor.extractFileName(dataEncoder, fileId));
-        attachmentObject.addProperty(DESCRIPTION, fileId);
-        attachmentObject.addProperty(CONTENT_TYPE, logEntry.getContentType());
-        attachmentObject.addProperty(SIZE, bytes.length);
-        CreateRequest attachmentCreateRequest = new CreateRequest(ATTACHMENT, attachmentObject);
-        CreateResponse attachmentResponse = restApi.create(attachmentCreateRequest);
-        checkResponse(attachmentResponse);
-        return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
-      } catch (IOException e) {
-        LOGGER.error("Unable to post ticket image: {}\n{}", e.getMessage(), Arrays.toString(
-            e.getStackTrace()), e);
-        throw new ReportPortalException(
-            UNABLE_INTERACT_WITH_INTEGRATION, "Unable to post ticket image: " + e.getMessage(), e);
-      }
-    } else {
-      throw new ReportPortalException(UNABLE_TO_LOAD_BINARY_DATA);
-    }
-  }
-
-  private void checkResponse(Response response) {
-    if (response.getErrors().length > 0) {
-      throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-          "Error during interacting with Rally: " + String.join(" ", response.getErrors())
-      );
-    }
-  }
-
-  private String createDescription(PostTicketRQ ticketRQ, List<InternalTicket.LogEntry> itemLogs) {
-    TestItem testItem = testItemRepository.findById(ticketRQ.getTestItemId()).orElseThrow(
-        () -> new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-            formattedSupplier("Test item {} not found", ticketRQ.getTestItemId())
-        ));
-    HashMap<Object, Object> templateData = new HashMap<>();
-    if (ticketRQ.getIsIncludeComments()) {
-      ofNullable(testItem.getItemResults().getIssue()).ifPresent(
-          issue -> templateData.put("comments", issue.getIssueDescription()));
-
-    }
-    if (ticketRQ.getBackLinks() != null) {
-      templateData.put("backLinks", ticketRQ.getBackLinks());
-    }
-    if (itemLogs != null && (ticketRQ.getIsIncludeLogs() || ticketRQ.getIsIncludeScreenshots())) {
-      templateData.put("logs", itemLogs);
-    }
-    return templateEngine.merge(BUG_TEMPLATE_PATH, templateData);
-  }
-
-  private Defect updateDescription(String description, Defect defect, RallyRestApi restApi)
-      throws IOException {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty(DESCRIPTION, description);
-    UpdateRequest updateRequest = new UpdateRequest(defect.getRef(), jsonObject);
-    UpdateResponse update = restApi.update(updateRequest);
-    checkResponse(update);
-    return gson.fromJson(update.getObject(), Defect.class);
+  public Map<String, ExtensionCommand<?>> getIntegrationExtensionCommands() {
+    List<ExtensionCommand<?>> commands = new ArrayList<>();
+    commands.add(new TestConnectionCommand(clientProviderSupplier.get(), projectRepository,
+        organizationUserRepository, organizationRepository, projectUserRepository));
+    commands.add(new GetIssueTypesCommand(projectRepository, organizationUserRepository,
+        organizationRepository, projectUserRepository));
+    commands.add(new GetIssueFieldsCommand(clientProviderSupplier.get(), projectRepository,
+        organizationUserRepository, organizationRepository, projectUserRepository));
+    commands.add(
+        new PostTicketCommand(projectRepository, organizationUserRepository, organizationRepository,
+            projectUserRepository, clientProviderSupplier.get(),
+            requestEntityConverterSupplier.get(), objectMapperSupplier, ticketAssemblerSupplier,
+            testItemRepository, attachmentDataStoreService, dataEncoder));
+    return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));
   }
 }
