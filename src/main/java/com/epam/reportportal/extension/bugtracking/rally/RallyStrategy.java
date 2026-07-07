@@ -114,7 +114,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   @Autowired
   private BasicTextEncryptor encryptor;
 
-  public RallyStrategy(Map<String, Object> initParams) {
+  public RallyStrategy() {
     objectMapperSupplier = new MemoizingSupplier<>(() -> objectMapper);
     requestEntityConverterSupplier =
         new MemoizingSupplier<>(() -> new RequestEntityConverter(objectMapper));
