@@ -22,7 +22,9 @@ import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorTyp
 import static com.epam.reportportal.extension.util.CommandParamUtils.ENTITY_PARAM;
 import static java.util.Optional.ofNullable;
 
+import com.epam.reportportal.api.model.PluginCommandContext;
 import com.epam.reportportal.api.model.PluginCommandRQ;
+import com.epam.reportportal.base.core.events.domain.TicketPostedEvent;
 import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngine;
 import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngineProvider;
 import com.epam.reportportal.base.infrastructure.model.externalsystem.AllowedValue;
@@ -30,6 +32,7 @@ import com.epam.reportportal.base.infrastructure.model.externalsystem.PostFormFi
 import com.epam.reportportal.base.infrastructure.model.externalsystem.PostTicketRQ;
 import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
 import com.epam.reportportal.base.infrastructure.persistence.binary.impl.AttachmentDataStoreService;
+import com.epam.reportportal.base.infrastructure.persistence.commons.ReportPortalUser;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.TestItemRepository;
@@ -42,20 +45,23 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.project.Proj
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.persistence.filesystem.DataEncoder;
 import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
+import com.epam.reportportal.base.util.SecurityContextUtils;
+import com.epam.reportportal.base.ws.converter.converters.TestItemConverter;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
-import com.epam.reportportal.extension.bugtracking.rally.Defect;
-import com.epam.reportportal.extension.bugtracking.rally.RallyConstants;
-import com.epam.reportportal.extension.bugtracking.rally.RallyObject;
 import com.epam.reportportal.extension.bugtracking.rally.client.RallyClientProvider;
+import com.epam.reportportal.extension.bugtracking.rally.model.Defect;
+import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
+import com.epam.reportportal.extension.bugtracking.rally.model.RallyObject;
+import com.epam.reportportal.extension.bugtracking.rally.utils.RallyJsonConverter;
+import com.epam.reportportal.extension.bugtracking.rally.utils.RallyTicketConverter;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
 import com.epam.reportportal.extension.util.FileNameExtractor;
 import com.epam.reportportal.extension.util.RequestEntityConverter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.CreateRequest;
@@ -63,7 +69,6 @@ import com.rallydev.rest.request.UpdateRequest;
 import com.rallydev.rest.response.CreateResponse;
 import com.rallydev.rest.response.Response;
 import com.rallydev.rest.response.UpdateResponse;
-import com.rallydev.rest.util.Ref;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -73,15 +78,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 
+@Slf4j
 public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PostTicketCommand.class);
   private static final String BUG_TEMPLATE_PATH = "bug_template.ftl";
 
   private final RallyClientProvider clientProvider;
@@ -91,7 +95,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
   private final TestItemRepository testItemRepository;
   private final AttachmentDataStoreService attachmentDataStoreService;
   private final DataEncoder dataEncoder;
-  private final Gson gson = new Gson();
+  private final ApplicationEventPublisher eventPublisher;
   private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
 
   public PostTicketCommand(ProjectRepository projectRepository,
@@ -103,7 +107,8 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       Supplier<InternalTicketAssembler> ticketAssemblerSupplier,
       TestItemRepository testItemRepository,
       AttachmentDataStoreService attachmentDataStoreService,
-      DataEncoder dataEncoder) {
+      DataEncoder dataEncoder,
+      ApplicationEventPublisher eventPublisher) {
     super(projectRepository, organizationUserRepository, organizationRepository,
         projectUserRepository);
     this.clientProvider = clientProvider;
@@ -113,6 +118,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     this.testItemRepository = testItemRepository;
     this.attachmentDataStoreService = attachmentDataStoreService;
     this.dataEncoder = dataEncoder;
+    this.eventPublisher = eventPublisher;
     this.minProjectRole = ProjectRole.EDITOR;
     this.minOrgRole = OrganizationRole.MANAGER;
     this.minUserRole = UserRole.ADMINISTRATOR;
@@ -146,11 +152,13 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
             "/slm/attachment/" + binaryDataEntry.getValue() + "/" + binaryDataEntry.getKey());
       }
       updateDescription(description, newDefect, restApi);
-      return toTicket(newDefect, integration);
+      Ticket ticket = RallyTicketConverter.toTicket(newDefect, integration);
+      publishTicketPostedEvent(ticket, ticketRQ, pluginCommandRq.getContext(), integration);
+      return ticket;
     } catch (ReportPortalException rpe) {
       throw rpe;
     } catch (Exception e) {
-      LOGGER.error("Unable to submit ticket: {}", e.getMessage(), e);
+      log.error("Unable to submit ticket: {}", e.getMessage(), e);
       throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, "Unable to submit ticket");
     }
   }
@@ -159,8 +167,8 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     JsonObject newDefect = new JsonObject();
     List<PostFormField> fields = ticketRQ.getFields();
     List<PostFormField> savedFields = new ArrayList<>();
-    BtsConstants.DEFECT_FORM_FIELDS.getParam(integration.getParams()).ifPresent(
-        integrationFields -> {
+    BtsConstants.DEFECT_FORM_FIELDS.getParam(integration.getParams())
+        .ifPresent(integrationFields -> {
           try {
             ObjectMapper mapper = objectMapperSupplier.get();
             savedFields.addAll(
@@ -168,7 +176,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
                     mapper.getTypeFactory()
                         .constructParametricType(List.class, PostFormField.class)));
           } catch (IOException e) {
-            LOGGER.error("Unable to parse post form fields: {}", e.getMessage());
+            log.error("Unable to parse post form fields: {}", e.getMessage());
             throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, e);
           }
         });
@@ -193,8 +201,8 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       }
     }
 
-    List<InternalTicket.LogEntry> logs = ofNullable(
-        ticketAssemblerSupplier.get().apply(ticketRQ).getLogs()).orElseGet(Lists::newArrayList);
+    List<InternalTicket.LogEntry> logs = ofNullable(ticketAssemblerSupplier.get().apply(ticketRQ).getLogs())
+        .orElseGet(Lists::newArrayList);
     String description = createDescription(ticketRQ, logs);
     newDefect.addProperty(RallyConstants.DESCRIPTION,
         newDefect.get(RallyConstants.DESCRIPTION) != null
@@ -205,13 +213,14 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     try {
       CreateResponse createResponse = restApi.create(createRequest);
       checkResponse(createResponse);
-      return gson.fromJson(createResponse.getObject(), Defect.class);
+      return RallyJsonConverter.fromJson(objectMapperSupplier.get(), createResponse.getObject(),
+          Defect.class);
     } catch (ReportPortalException rpe) {
       throw rpe;
     } catch (Exception e) {
-      LOGGER.error("Errored request: {}", gson.toJson(createRequest));
+      log.error("Errored request: {} - {}", createRequest.getBody(), e.getMessage(), e);
       throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
-          "Errored request: " + gson.toJson(createRequest));
+          "Errored request: " + createRequest.getBody() + " - " + e.getMessage());
     }
   }
 
@@ -237,9 +246,10 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
         CreateResponse attachmentResponse =
             restApi.create(new CreateRequest(RallyConstants.ATTACHMENT, attachmentObject));
         checkResponse(attachmentResponse);
-        return gson.fromJson(attachmentResponse.getObject(), RallyObject.class);
+        return RallyJsonConverter.fromJson(objectMapperSupplier.get(),
+            attachmentResponse.getObject(), RallyObject.class);
       } catch (IOException e) {
-        LOGGER.error("Unable to post ticket image: {}\n{}", e.getMessage(),
+        log.error("Unable to post ticket image: {}\n{}", e.getMessage(),
             Arrays.toString(e.getStackTrace()), e);
         throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
             "Unable to post ticket image: " + e.getMessage(), e);
@@ -249,14 +259,14 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     }
   }
 
-  private Defect updateDescription(String description, Defect defect, RallyRestApi restApi)
+  private void updateDescription(String description, Defect defect, RallyRestApi restApi)
       throws IOException {
     JsonObject jsonObject = new JsonObject();
     jsonObject.addProperty(RallyConstants.DESCRIPTION, description);
     UpdateRequest updateRequest = new UpdateRequest(defect.getRef(), jsonObject);
     UpdateResponse update = restApi.update(updateRequest);
     checkResponse(update);
-    return gson.fromJson(update.getObject(), Defect.class);
+    RallyJsonConverter.fromJson(objectMapperSupplier.get(), update.getObject(), Defect.class);
   }
 
   private String createDescription(PostTicketRQ ticketRQ, List<InternalTicket.LogEntry> itemLogs) {
@@ -277,17 +287,18 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     return templateEngine.merge(BUG_TEMPLATE_PATH, templateData);
   }
 
-  private Ticket toTicket(Defect defect, Integration integration) {
-    Ticket ticket = new Ticket();
-    String baseUrl =
-        StringUtils.removeEnd((String) integration.getParams().getParams().get("url"), "/");
-    String link = baseUrl + "/#/" + Ref.getOidFromRef(defect.getProject().getRef())
-        + "/detail/defect/" + defect.getObjectId();
-    ticket.setId(defect.getFormattedId());
-    ticket.setSummary(defect.getName());
-    ticket.setTicketUrl(link);
-    ticket.setStatus(defect.getState());
-    return ticket;
+  private void publishTicketPostedEvent(Ticket ticket, PostTicketRQ ticketRQ, PluginCommandContext context,
+      Integration integration) {
+    ofNullable(ticketRQ.getBackLinks()).map(Map::keySet)
+        .map(testItemRepository::findAllById)
+        .ifPresent(testItems -> {
+          ReportPortalUser user = SecurityContextUtils.getPrincipal();
+          Long projectId = context != null ? context.getProjectId() : null;
+          Long orgId = integration.getOrganizationId();
+          testItems.forEach(testItem -> eventPublisher.publishEvent(
+              new TicketPostedEvent(ticket, user.getUserId(), user.getUsername(),
+                  TestItemConverter.TO_ACTIVITY_RESOURCE.apply(testItem, projectId), orgId)));
+        });
   }
 
   private void checkResponse(Response response) {

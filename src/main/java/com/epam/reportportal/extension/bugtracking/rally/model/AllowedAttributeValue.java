@@ -14,34 +14,23 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.bugtracking.rally;
+package com.epam.reportportal.extension.bugtracking.rally.model;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Dzmitry_Kavalets
  */
+@Setter
+@Getter
 public class AllowedAttributeValue extends RallyObject {
 
-  @SerializedName("Count")
+  @JsonProperty("Count")
   private int count;
 
-  @SerializedName("StringValue")
+  @JsonProperty("StringValue")
   private String stringValue;
 
-  public String getStringValue() {
-    return stringValue;
-  }
-
-  public void setStringValue(String stringValue) {
-    this.stringValue = stringValue;
-  }
-
-  public int getCount() {
-    return count;
-  }
-
-  public void setCount(int count) {
-    this.count = count;
-  }
 }

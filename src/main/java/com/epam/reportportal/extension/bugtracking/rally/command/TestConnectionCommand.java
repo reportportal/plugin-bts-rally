@@ -16,6 +16,8 @@
 
 package com.epam.reportportal.extension.bugtracking.rally.command;
 
+import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+
 import com.epam.reportportal.api.model.PluginCommandRQ;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
@@ -27,21 +29,17 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.project.Proj
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
-import com.epam.reportportal.extension.bugtracking.rally.RallyConstants;
 import com.epam.reportportal.extension.bugtracking.rally.client.RallyClientProvider;
+import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
 import com.epam.reportportal.extension.bugtracking.rally.validator.IntegrationValidator;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.QueryRequest;
 import com.rallydev.rest.util.QueryFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
-
+@Slf4j
 public class TestConnectionCommand extends AbstractExtensionCommand<Boolean> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TestConnectionCommand.class);
 
   private final RallyClientProvider clientProvider;
 
@@ -74,7 +72,7 @@ public class TestConnectionCommand extends AbstractExtensionCommand<Boolean> {
       rq.setQueryFilter(new QueryFilter(RallyConstants.OBJECT_ID, "=", project));
       return restApi.query(rq).getTotalResultCount() > 0;
     } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
+      log.error(e.getMessage(), e);
       return false;
     }
   }

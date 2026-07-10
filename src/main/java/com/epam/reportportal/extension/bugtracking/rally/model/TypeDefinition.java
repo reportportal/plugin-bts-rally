@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.bugtracking.rally;
+package com.epam.reportportal.extension.bugtracking.rally.model;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Dzmitry_Kavalets
  */
-public class Project extends RallyObject {
+@Setter
+@Getter
+public class TypeDefinition extends RallyObject {
+
+  @JsonProperty("Attributes")
+  private AttributeDefinition attributeDefinition;
 
 }

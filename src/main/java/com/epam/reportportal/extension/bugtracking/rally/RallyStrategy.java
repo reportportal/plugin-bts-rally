@@ -60,6 +60,7 @@ import org.pf4j.Extension;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.support.AbstractApplicationContext;
@@ -85,6 +86,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   private final Supplier<RallyClientProvider> clientProviderSupplier;
   private final Supplier<InternalTicketAssembler> ticketAssemblerSupplier;
   private final Supplier<ApplicationListener<PluginUploadedEvent>> pluginLoadedListenerSupplier;
+  private final Supplier<ApplicationEventPublisher> eventPublisherSupplier;
 
   @Autowired
   private ApplicationContext applicationContext;
@@ -126,6 +128,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
     pluginLoadedListenerSupplier = new MemoizingSupplier<>(
         () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository,
             integrationRepository, new PluginInfoProviderImpl()));
+    eventPublisherSupplier = new MemoizingSupplier<>(() -> applicationContext);
   }
 
   @Override
@@ -185,8 +188,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
     commands.add(new RetrieveUpdateParamsCommand(projectRepository, organizationUserRepository,
         organizationRepository, projectUserRepository));
     commands.add(new GetIssueCommand(clientProviderSupplier.get(), ticketRepository,
-        integrationRepository, projectRepository, organizationUserRepository, organizationRepository,
-        projectUserRepository));
+        integrationRepository, objectMapperSupplier, projectRepository,
+        organizationUserRepository, organizationRepository, projectUserRepository));
     return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));
   }
 
@@ -197,13 +200,14 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
         organizationUserRepository, organizationRepository, projectUserRepository));
     commands.add(new GetIssueTypesCommand(projectRepository, organizationUserRepository,
         organizationRepository, projectUserRepository));
-    commands.add(new GetIssueFieldsCommand(clientProviderSupplier.get(), projectRepository,
-        organizationUserRepository, organizationRepository, projectUserRepository));
+    commands.add(new GetIssueFieldsCommand(clientProviderSupplier.get(), objectMapperSupplier,
+        projectRepository, organizationUserRepository, organizationRepository,
+        projectUserRepository));
     commands.add(
         new PostTicketCommand(projectRepository, organizationUserRepository, organizationRepository,
             projectUserRepository, clientProviderSupplier.get(),
             requestEntityConverterSupplier.get(), objectMapperSupplier, ticketAssemblerSupplier,
-            testItemRepository, attachmentDataStoreService, dataEncoder));
+            testItemRepository, attachmentDataStoreService, dataEncoder, eventPublisherSupplier.get()));
     return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));
   }
 }
