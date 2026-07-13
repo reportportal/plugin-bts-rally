@@ -14,23 +14,38 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.bugtracking.rally;
+package com.epam.reportportal.extension.bugtracking.rally.model;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author Dzmitry_Kavalets
  */
-public class TypeDefinition extends RallyObject {
+@Setter
+@Getter
+public class RallyObject {
 
-  @SerializedName("Attributes")
-  private AttributeDefinition attributeDefinition;
+  @JsonProperty("_rallyAPIMajor")
+  private String rallyApiMajor;
 
-  public AttributeDefinition getAttributeDefinition() {
-    return attributeDefinition;
-  }
+  @JsonProperty("_rallyAPIMinor")
+  private String rallyApiMinor;
 
-  public void setAttributeDefinition(AttributeDefinition attributeDefinition) {
-    this.attributeDefinition = attributeDefinition;
-  }
+  @JsonProperty("_ref")
+  private String ref;
+
+  @JsonProperty("_refObjectUUID")
+  private String refObjectUUID;
+
+  @JsonProperty("_objectVersion")
+  private String objectVersion;
+
+  @JsonProperty("_refObjectName")
+  private String refObjectName;
+
+  @JsonProperty("ObjectID")
+  private long objectId;
+
 }

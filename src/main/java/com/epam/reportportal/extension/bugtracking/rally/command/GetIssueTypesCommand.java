@@ -25,7 +25,7 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.integration.
 import com.epam.reportportal.base.infrastructure.persistence.entity.organization.OrganizationRole;
 import com.epam.reportportal.base.infrastructure.persistence.entity.project.ProjectRole;
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
-import com.epam.reportportal.extension.bugtracking.rally.RallyConstants;
+import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
 import java.util.Collections;
 import java.util.List;

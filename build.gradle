@@ -3,6 +3,7 @@ plugins {
     id 'java'
     id 'jacoco'
     id 'com.gradleup.shadow' version '9.3.1'
+    id("io.freefair.lombok") version "9.5.0"
 }
 
 project.ext {
@@ -42,8 +43,8 @@ dependencies {
         implementation 'com.epam.reportportal:service-api'
         annotationProcessor 'com.epam.reportportal:service-api'
     } else {
-        implementation 'com.github.reportportal:service-api:0141b9e'
-        annotationProcessor 'com.github.reportportal:service-api:0141b9e'
+        implementation 'com.github.reportportal:service-api:16bdc11'
+        annotationProcessor 'com.github.reportportal:service-api:16bdc11'
     }
 
     implementation 'com.rallydev.rest:rally-rest-api:2.2.1'

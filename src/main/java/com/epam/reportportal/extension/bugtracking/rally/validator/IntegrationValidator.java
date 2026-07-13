@@ -21,6 +21,7 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.integration.
 import com.epam.reportportal.base.infrastructure.rules.commons.validation.BusinessRule;
 import com.epam.reportportal.base.infrastructure.rules.commons.validation.Suppliers;
 import com.epam.reportportal.base.infrastructure.rules.exception.ErrorType;
+import com.epam.reportportal.extension.bugtracking.BtsConstants;
 
 /**
  * @author <a href="mailto:siarhei_hrabko@epam.com">Siarhei Hrabko</a>
@@ -40,7 +41,8 @@ public final class IntegrationValidator {
    * @param integration {@link Integration}
    */
   public static void validateThirdPartyUrl(Integration integration) {
-    var valid = String.valueOf(integration.getParams().getParams().get("url"))
+    var valid = String.valueOf(
+            BtsConstants.URL.getParam(integration.getParams()).orElse(null))
         .startsWith(RALLY_BASE_URL);
 
     BusinessRule.expect(valid, Predicates.equalTo(true))

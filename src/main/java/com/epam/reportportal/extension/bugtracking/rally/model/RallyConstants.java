@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.extension.bugtracking.rally;
+package com.epam.reportportal.extension.bugtracking.rally.model;
 
 /**
  * @author Dzmitry_Kavalets

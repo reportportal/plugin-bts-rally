@@ -23,7 +23,6 @@ import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.TicketRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
@@ -33,45 +32,43 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRol
 import com.epam.reportportal.base.infrastructure.rules.commons.validation.Suppliers;
 import com.epam.reportportal.base.infrastructure.rules.exception.ErrorType;
 import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
-import com.epam.reportportal.extension.bugtracking.rally.Defect;
-import com.epam.reportportal.extension.bugtracking.rally.RallyConstants;
 import com.epam.reportportal.extension.bugtracking.rally.client.RallyClientProvider;
+import com.epam.reportportal.extension.bugtracking.rally.model.Defect;
+import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
+import com.epam.reportportal.extension.bugtracking.rally.utils.RallyJsonConverter;
+import com.epam.reportportal.extension.bugtracking.rally.utils.RallyTicketConverter;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.QueryRequest;
 import com.rallydev.rest.response.QueryResponse;
 import com.rallydev.rest.util.QueryFilter;
-import com.rallydev.rest.util.Ref;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GetIssueCommand.class);
   private static final String TICKET_ID = "ticketId";
   private static final String PROJECT_ID = "projectId";
 
   private final RallyClientProvider clientProvider;
-  private final TicketRepository ticketRepository;
   private final IntegrationRepository integrationRepository;
-  private final Gson gson = new Gson();
+  private final Supplier<ObjectMapper> objectMapperSupplier;
 
-  public GetIssueCommand(RallyClientProvider clientProvider, TicketRepository ticketRepository,
-      IntegrationRepository integrationRepository, ProjectRepository projectRepository,
-      OrganizationUserRepository organizationUserRepository,
+  public GetIssueCommand(RallyClientProvider clientProvider,
+      IntegrationRepository integrationRepository, Supplier<ObjectMapper> objectMapperSupplier,
+      ProjectRepository projectRepository, OrganizationUserRepository organizationUserRepository,
       OrganizationRepository organizationRepository, ProjectUserRepository projectUserRepository) {
     super(projectRepository, organizationUserRepository, organizationRepository,
         projectUserRepository);
     this.clientProvider = clientProvider;
-    this.ticketRepository = ticketRepository;
     this.integrationRepository = integrationRepository;
+    this.objectMapperSupplier = objectMapperSupplier;
     this.minProjectRole = ProjectRole.EDITOR;
     this.minOrgRole = OrganizationRole.MANAGER;
     this.minUserRole = UserRole.ADMINISTRATOR;
@@ -85,16 +82,11 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
   @Override
   public Ticket executeCommand(PluginCommandRQ pluginCommandRq) {
     Map<String, Object> params = pluginCommandRq.getArguments();
+    var ticketId = (String) ofNullable(params.get(TICKET_ID))
+        .orElseThrow(() -> new ReportPortalException(ErrorType.BAD_REQUEST_ERROR, TICKET_ID + " must be provided"));
 
-    var ticket = ticketRepository.findByTicketId(
-        (String) ofNullable(params.get(TICKET_ID)).orElseThrow(
-            () -> new ReportPortalException(ErrorType.BAD_REQUEST_ERROR,
-                TICKET_ID + " must be provided")
-        )).orElseThrow(() -> new ReportPortalException(ErrorType.BAD_REQUEST_ERROR,
-        "Ticket not found with id " + params.get(TICKET_ID)));
-
-    final Long projectId = (Long) ofNullable(params.get(PROJECT_ID)).orElseThrow(
-        () -> new ReportPortalException(ErrorType.BAD_REQUEST_ERROR,
+    final Long projectId = (Long) ofNullable(params.get(PROJECT_ID))
+        .orElseThrow(() -> new ReportPortalException(ErrorType.BAD_REQUEST_ERROR,
             PROJECT_ID + " must be provided"));
 
     String btsUrl = (String) params.get("url");
@@ -108,17 +100,15 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
                         "Integration with provided url and project isn't found")));
 
     try (RallyRestApi restApi = clientProvider.provide(integration.getParams())) {
-      return findDefect(restApi, ticket.getTicketId())
-          .map(defect -> toTicket(defect, integration))
+      return findDefect(restApi, ticketId)
+          .map(defect -> RallyTicketConverter.toTicket(defect, integration))
           .orElseThrow(() -> new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_INTEGRATION,
-              Suppliers.formattedSupplier("Ticket with id {} not found",
-                  ticket.getTicketId()).get()));
+              Suppliers.formattedSupplier("Ticket with id {} not found", ticketId).get()));
     } catch (ReportPortalException rpe) {
       throw rpe;
     } catch (Exception ex) {
-      LOGGER.error("Unable to load ticket: {}", ex.getMessage(), ex);
-      throw new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_INTEGRATION,
-          "Unable to load ticket");
+      log.error("Unable to load ticket: {}", ex.getMessage(), ex);
+      throw new ReportPortalException(ErrorType.UNABLE_INTERACT_WITH_INTEGRATION, "Unable to load ticket");
     }
   }
 
@@ -130,20 +120,7 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
       return Optional.empty();
     }
     List<Defect> defects =
-        gson.fromJson(rs.getResults(), new TypeToken<List<Defect>>() {}.getType());
+        RallyJsonConverter.fromJsonList(objectMapperSupplier.get(), rs.getResults(), Defect.class);
     return defects.stream().findAny();
-  }
-
-  private Ticket toTicket(Defect defect, Integration integration) {
-    Ticket ticket = new Ticket();
-    String baseUrl =
-        StringUtils.removeEnd((String) integration.getParams().getParams().get("url"), "/");
-    String link = baseUrl + "/#/" + Ref.getOidFromRef(defect.getProject().getRef())
-        + "/detail/defect/" + defect.getObjectId();
-    ticket.setId(defect.getFormattedId());
-    ticket.setSummary(defect.getName());
-    ticket.setTicketUrl(link);
-    ticket.setStatus(defect.getState());
-    return ticket;
   }
 }
