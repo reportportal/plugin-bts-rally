@@ -23,7 +23,6 @@ import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
 import com.epam.reportportal.base.infrastructure.persistence.dao.IntegrationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.TicketRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
@@ -58,18 +57,16 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
   private static final String PROJECT_ID = "projectId";
 
   private final RallyClientProvider clientProvider;
-  private final TicketRepository ticketRepository;
   private final IntegrationRepository integrationRepository;
   private final Supplier<ObjectMapper> objectMapperSupplier;
 
-  public GetIssueCommand(RallyClientProvider clientProvider, TicketRepository ticketRepository,
+  public GetIssueCommand(RallyClientProvider clientProvider,
       IntegrationRepository integrationRepository, Supplier<ObjectMapper> objectMapperSupplier,
       ProjectRepository projectRepository, OrganizationUserRepository organizationUserRepository,
       OrganizationRepository organizationRepository, ProjectUserRepository projectUserRepository) {
     super(projectRepository, organizationUserRepository, organizationRepository,
         projectUserRepository);
     this.clientProvider = clientProvider;
-    this.ticketRepository = ticketRepository;
     this.integrationRepository = integrationRepository;
     this.objectMapperSupplier = objectMapperSupplier;
     this.minProjectRole = ProjectRole.EDITOR;

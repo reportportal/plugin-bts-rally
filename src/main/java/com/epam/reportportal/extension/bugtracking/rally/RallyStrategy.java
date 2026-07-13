@@ -24,7 +24,6 @@ import com.epam.reportportal.base.infrastructure.persistence.dao.LogRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.TestItemRepository;
-import com.epam.reportportal.base.infrastructure.persistence.dao.TicketRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.organization.OrganizationUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.filesystem.DataEncoder;
@@ -94,8 +93,6 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   private IntegrationTypeRepository integrationTypeRepository;
   @Autowired
   private IntegrationRepository integrationRepository;
-  @Autowired
-  private TicketRepository ticketRepository;
   @Autowired
   private ProjectRepository projectRepository;
   @Autowired
@@ -187,7 +184,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
         organizationRepository, projectUserRepository));
     commands.add(new RetrieveUpdateParamsCommand(projectRepository, organizationUserRepository,
         organizationRepository, projectUserRepository));
-    commands.add(new GetIssueCommand(clientProviderSupplier.get(), ticketRepository,
+    commands.add(new GetIssueCommand(clientProviderSupplier.get(),
         integrationRepository, objectMapperSupplier, projectRepository,
         organizationUserRepository, organizationRepository, projectUserRepository));
     return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));

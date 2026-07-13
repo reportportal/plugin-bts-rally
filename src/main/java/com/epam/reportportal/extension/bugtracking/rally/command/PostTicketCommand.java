@@ -109,8 +109,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       AttachmentDataStoreService attachmentDataStoreService,
       DataEncoder dataEncoder,
       ApplicationEventPublisher eventPublisher) {
-    super(projectRepository, organizationUserRepository, organizationRepository,
-        projectUserRepository);
+    super(projectRepository, organizationUserRepository, organizationRepository, projectUserRepository);
     this.clientProvider = clientProvider;
     this.requestEntityConverter = requestEntityConverter;
     this.objectMapperSupplier = objectMapperSupplier;

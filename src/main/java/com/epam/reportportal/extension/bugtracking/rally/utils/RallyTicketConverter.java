@@ -16,8 +16,11 @@
 
 package com.epam.reportportal.extension.bugtracking.rally.utils;
 
+import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorType.UNABLE_INTERACT_WITH_INTEGRATION;
+
 import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
 import com.epam.reportportal.base.infrastructure.persistence.entity.integration.Integration;
+import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.rally.model.Defect;
 import com.rallydev.rest.util.Ref;
