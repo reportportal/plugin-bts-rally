@@ -22,9 +22,7 @@ import static com.epam.reportportal.base.infrastructure.rules.exception.ErrorTyp
 import static com.epam.reportportal.extension.util.CommandParamUtils.ENTITY_PARAM;
 import static java.util.Optional.ofNullable;
 
-import com.epam.reportportal.api.model.PluginCommandContext;
 import com.epam.reportportal.api.model.PluginCommandRQ;
-import com.epam.reportportal.base.core.events.domain.TicketPostedEvent;
 import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngine;
 import com.epam.reportportal.base.infrastructure.commons.template.TemplateEngineProvider;
 import com.epam.reportportal.base.infrastructure.model.externalsystem.AllowedValue;
@@ -32,7 +30,6 @@ import com.epam.reportportal.base.infrastructure.model.externalsystem.PostFormFi
 import com.epam.reportportal.base.infrastructure.model.externalsystem.PostTicketRQ;
 import com.epam.reportportal.base.infrastructure.model.externalsystem.Ticket;
 import com.epam.reportportal.base.infrastructure.persistence.binary.impl.AttachmentDataStoreService;
-import com.epam.reportportal.base.infrastructure.persistence.commons.ReportPortalUser;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.ProjectUserRepository;
 import com.epam.reportportal.base.infrastructure.persistence.dao.TestItemRepository;
@@ -45,8 +42,7 @@ import com.epam.reportportal.base.infrastructure.persistence.entity.project.Proj
 import com.epam.reportportal.base.infrastructure.persistence.entity.user.UserRole;
 import com.epam.reportportal.base.infrastructure.persistence.filesystem.DataEncoder;
 import com.epam.reportportal.base.infrastructure.rules.exception.ReportPortalException;
-import com.epam.reportportal.base.util.SecurityContextUtils;
-import com.epam.reportportal.base.ws.converter.converters.TestItemConverter;
+import com.epam.reportportal.extension.bugtracking.BtsActivityPublisher;
 import com.epam.reportportal.extension.bugtracking.BtsConstants;
 import com.epam.reportportal.extension.bugtracking.InternalTicket;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
@@ -81,7 +77,6 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.context.ApplicationEventPublisher;
 
 @Slf4j
 public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
@@ -95,7 +90,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
   private final TestItemRepository testItemRepository;
   private final AttachmentDataStoreService attachmentDataStoreService;
   private final DataEncoder dataEncoder;
-  private final ApplicationEventPublisher eventPublisher;
+  private final BtsActivityPublisher btsActivityPublisher;
   private final TemplateEngine templateEngine = new TemplateEngineProvider().get();
 
   public PostTicketCommand(ProjectRepository projectRepository,
@@ -108,7 +103,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       TestItemRepository testItemRepository,
       AttachmentDataStoreService attachmentDataStoreService,
       DataEncoder dataEncoder,
-      ApplicationEventPublisher eventPublisher) {
+      BtsActivityPublisher btsActivityPublisher) {
     super(projectRepository, organizationUserRepository, organizationRepository, projectUserRepository);
     this.clientProvider = clientProvider;
     this.requestEntityConverter = requestEntityConverter;
@@ -117,7 +112,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     this.testItemRepository = testItemRepository;
     this.attachmentDataStoreService = attachmentDataStoreService;
     this.dataEncoder = dataEncoder;
-    this.eventPublisher = eventPublisher;
+    this.btsActivityPublisher = btsActivityPublisher;
     this.minProjectRole = ProjectRole.EDITOR;
     this.minOrgRole = OrganizationRole.MANAGER;
     this.minUserRole = UserRole.ADMINISTRATOR;
@@ -152,7 +147,8 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       }
       updateDescription(description, newDefect, restApi);
       Ticket ticket = RallyTicketConverter.toTicket(newDefect, integration);
-      publishTicketPostedEvent(ticket, ticketRQ, pluginCommandRq.getContext(), integration);
+      btsActivityPublisher.publishTicketPostedEvent(ticket, ticketRQ, pluginCommandRq.getContext(),
+          integration);
       return ticket;
     } catch (ReportPortalException rpe) {
       throw rpe;
@@ -284,20 +280,6 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       templateData.put("logs", itemLogs);
     }
     return templateEngine.merge(BUG_TEMPLATE_PATH, templateData);
-  }
-
-  private void publishTicketPostedEvent(Ticket ticket, PostTicketRQ ticketRQ, PluginCommandContext context,
-      Integration integration) {
-    ofNullable(ticketRQ.getBackLinks()).map(Map::keySet)
-        .map(testItemRepository::findAllById)
-        .ifPresent(testItems -> {
-          ReportPortalUser user = SecurityContextUtils.getPrincipal();
-          Long projectId = context != null ? context.getProjectId() : null;
-          Long orgId = integration.getOrganizationId();
-          testItems.forEach(testItem -> eventPublisher.publishEvent(
-              new TicketPostedEvent(ticket, user.getUserId(), user.getUsername(),
-                  TestItemConverter.TO_ACTIVITY_RESOURCE.apply(testItem, projectId), orgId)));
-        });
   }
 
   private void checkResponse(Response response) {

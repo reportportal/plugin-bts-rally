@@ -32,6 +32,7 @@ import com.epam.reportportal.extension.IntegrationGroupEnum;
 import com.epam.reportportal.extension.NamedPluginCommand;
 import com.epam.reportportal.extension.PluginCommand;
 import com.epam.reportportal.extension.ReportPortalExtensionPoint;
+import com.epam.reportportal.extension.bugtracking.BtsActivityPublisher;
 import com.epam.reportportal.extension.bugtracking.InternalTicketAssembler;
 import com.epam.reportportal.extension.bugtracking.rally.client.RallyClientProvider;
 import com.epam.reportportal.extension.bugtracking.rally.command.GetIssueCommand;
@@ -59,7 +60,6 @@ import org.pf4j.Extension;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.support.AbstractApplicationContext;
@@ -85,10 +85,11 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   private final Supplier<RallyClientProvider> clientProviderSupplier;
   private final Supplier<InternalTicketAssembler> ticketAssemblerSupplier;
   private final Supplier<ApplicationListener<PluginUploadedEvent>> pluginLoadedListenerSupplier;
-  private final Supplier<ApplicationEventPublisher> eventPublisherSupplier;
 
   @Autowired
   private ApplicationContext applicationContext;
+  @Autowired
+  private BtsActivityPublisher btsActivityPublisher;
   @Autowired
   private IntegrationTypeRepository integrationTypeRepository;
   @Autowired
@@ -125,7 +126,6 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
     pluginLoadedListenerSupplier = new MemoizingSupplier<>(
         () -> new PluginLoadedEventListener(PLUGIN_ID, integrationTypeRepository,
             integrationRepository, new PluginInfoProviderImpl()));
-    eventPublisherSupplier = new MemoizingSupplier<>(() -> applicationContext);
   }
 
   @Override
@@ -204,7 +204,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
         new PostTicketCommand(projectRepository, organizationUserRepository, organizationRepository,
             projectUserRepository, clientProviderSupplier.get(),
             requestEntityConverterSupplier.get(), objectMapperSupplier, ticketAssemblerSupplier,
-            testItemRepository, attachmentDataStoreService, dataEncoder, eventPublisherSupplier.get()));
+            testItemRepository, attachmentDataStoreService, dataEncoder, btsActivityPublisher));
     return commands.stream().collect(Collectors.toMap(NamedPluginCommand::getName, it -> it));
   }
 }
