@@ -43,8 +43,8 @@ dependencies {
         implementation 'com.epam.reportportal:service-api'
         annotationProcessor 'com.epam.reportportal:service-api'
     } else {
-        implementation 'com.github.reportportal:service-api:575ab32'
-        annotationProcessor 'com.github.reportportal:service-api:575ab32'
+        implementation 'com.github.reportportal:service-api:73c327819e'
+        annotationProcessor 'com.github.reportportal:service-api:73c327819e'
     }
 
     implementation 'com.rallydev.rest:rally-rest-api:2.2.1'
