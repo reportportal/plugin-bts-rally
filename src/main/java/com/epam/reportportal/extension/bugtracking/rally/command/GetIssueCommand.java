@@ -38,7 +38,6 @@ import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
 import com.epam.reportportal.extension.bugtracking.rally.utils.RallyJsonConverter;
 import com.epam.reportportal.extension.bugtracking.rally.utils.RallyTicketConverter;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.QueryRequest;
 import com.rallydev.rest.response.QueryResponse;
@@ -49,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.json.JsonMapper;
 
 @Slf4j
 public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
@@ -58,17 +58,16 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
 
   private final RallyClientProvider clientProvider;
   private final IntegrationRepository integrationRepository;
-  private final Supplier<ObjectMapper> objectMapperSupplier;
+  private final Supplier<JsonMapper> jsonMapperSupplier;
 
   public GetIssueCommand(RallyClientProvider clientProvider,
-      IntegrationRepository integrationRepository, Supplier<ObjectMapper> objectMapperSupplier,
+      IntegrationRepository integrationRepository, Supplier<JsonMapper> jsonMapperSupplier,
       ProjectRepository projectRepository, OrganizationUserRepository organizationUserRepository,
       OrganizationRepository organizationRepository, ProjectUserRepository projectUserRepository) {
-    super(projectRepository, organizationUserRepository, organizationRepository,
-        projectUserRepository);
+    super(projectRepository, organizationUserRepository, organizationRepository, projectUserRepository);
     this.clientProvider = clientProvider;
     this.integrationRepository = integrationRepository;
-    this.objectMapperSupplier = objectMapperSupplier;
+    this.jsonMapperSupplier = jsonMapperSupplier;
     this.minProjectRole = ProjectRole.EDITOR;
     this.minOrgRole = OrganizationRole.MANAGER;
     this.minUserRole = UserRole.ADMINISTRATOR;
@@ -120,7 +119,7 @@ public class GetIssueCommand extends AbstractExtensionCommand<Ticket> {
       return Optional.empty();
     }
     List<Defect> defects =
-        RallyJsonConverter.fromJsonList(objectMapperSupplier.get(), rs.getResults(), Defect.class);
+        RallyJsonConverter.fromJsonList(jsonMapperSupplier.get(), rs.getResults(), Defect.class);
     return defects.stream().findAny();
   }
 }

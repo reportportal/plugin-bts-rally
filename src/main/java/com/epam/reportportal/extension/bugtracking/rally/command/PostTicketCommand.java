@@ -55,9 +55,6 @@ import com.epam.reportportal.extension.bugtracking.rally.utils.RallyTicketConver
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
 import com.epam.reportportal.extension.util.FileNameExtractor;
 import com.epam.reportportal.extension.util.RequestEntityConverter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
-import com.google.common.io.ByteStreams;
 import com.google.gson.JsonObject;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.CreateRequest;
@@ -69,14 +66,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections4.CollectionUtils;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 @Slf4j
 public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
@@ -85,7 +85,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
 
   private final RallyClientProvider clientProvider;
   private final RequestEntityConverter requestEntityConverter;
-  private final Supplier<ObjectMapper> objectMapperSupplier;
+  private final Supplier<JsonMapper> jsonMapperSupplier;
   private final Supplier<InternalTicketAssembler> ticketAssemblerSupplier;
   private final TestItemRepository testItemRepository;
   private final AttachmentDataStoreService attachmentDataStoreService;
@@ -98,7 +98,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
       OrganizationRepository organizationRepository, ProjectUserRepository projectUserRepository,
       RallyClientProvider clientProvider,
       RequestEntityConverter requestEntityConverter,
-      Supplier<ObjectMapper> objectMapperSupplier,
+      Supplier<JsonMapper> jsonMapperSupplier,
       Supplier<InternalTicketAssembler> ticketAssemblerSupplier,
       TestItemRepository testItemRepository,
       AttachmentDataStoreService attachmentDataStoreService,
@@ -107,7 +107,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     super(projectRepository, organizationUserRepository, organizationRepository, projectUserRepository);
     this.clientProvider = clientProvider;
     this.requestEntityConverter = requestEntityConverter;
-    this.objectMapperSupplier = objectMapperSupplier;
+    this.jsonMapperSupplier = jsonMapperSupplier;
     this.ticketAssemblerSupplier = ticketAssemblerSupplier;
     this.testItemRepository = testItemRepository;
     this.attachmentDataStoreService = attachmentDataStoreService;
@@ -131,7 +131,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
 
     try (RallyRestApi restApi = clientProvider.provide(integration.getParams())) {
       List<InternalTicket.LogEntry> logs = ofNullable(
-          ticketAssemblerSupplier.get().apply(ticketRQ).getLogs()).orElseGet(Lists::newArrayList);
+          ticketAssemblerSupplier.get().apply(ticketRQ).getLogs()).orElseGet(ArrayList::new);
 
       Defect newDefect = postDefect(restApi, ticketRQ, integration);
       String description = newDefect.getDescription();
@@ -165,12 +165,12 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     BtsConstants.DEFECT_FORM_FIELDS.getParam(integration.getParams())
         .ifPresent(integrationFields -> {
           try {
-            ObjectMapper mapper = objectMapperSupplier.get();
+            JsonMapper mapper = jsonMapperSupplier.get();
             savedFields.addAll(
                 mapper.readValue(mapper.writeValueAsBytes(integrationFields),
-                    mapper.getTypeFactory()
-                        .constructParametricType(List.class, PostFormField.class)));
-          } catch (IOException e) {
+                    new TypeReference<List<PostFormField>>() {
+                    }));
+          } catch (JacksonException e) {
             log.error("Unable to parse post form fields: {}", e.getMessage());
             throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION, e);
           }
@@ -197,7 +197,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     }
 
     List<InternalTicket.LogEntry> logs = ofNullable(ticketAssemblerSupplier.get().apply(ticketRQ).getLogs())
-        .orElseGet(Lists::newArrayList);
+        .orElseGet(ArrayList::new);
     String description = createDescription(ticketRQ, logs);
     newDefect.addProperty(RallyConstants.DESCRIPTION,
         newDefect.get(RallyConstants.DESCRIPTION) != null
@@ -208,7 +208,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     try {
       CreateResponse createResponse = restApi.create(createRequest);
       checkResponse(createResponse);
-      return RallyJsonConverter.fromJson(objectMapperSupplier.get(), createResponse.getObject(),
+      return RallyJsonConverter.fromJson(jsonMapperSupplier.get(), createResponse.getObject(),
           Defect.class);
     } catch (ReportPortalException rpe) {
       throw rpe;
@@ -224,9 +224,9 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     Optional<InputStream> fileOptional = attachmentDataStoreService.load(logEntry.getFileId());
     if (fileOptional.isPresent()) {
       try (InputStream file = fileOptional.get()) {
-        byte[] bytes = ByteStreams.toByteArray(file);
+        byte[] bytes = file.readAllBytes();
         JsonObject attach = new JsonObject();
-        attach.addProperty(RallyConstants.CONTENT, Base64.encodeBase64String(bytes));
+        attach.addProperty(RallyConstants.CONTENT, Base64.getEncoder().encodeToString(bytes));
         CreateResponse attachmentContentResponse =
             restApi.create(new CreateRequest(RallyConstants.ATTACHMENT_CONTENT, attach));
         JsonObject attachmentObject = new JsonObject();
@@ -241,9 +241,9 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
         CreateResponse attachmentResponse =
             restApi.create(new CreateRequest(RallyConstants.ATTACHMENT, attachmentObject));
         checkResponse(attachmentResponse);
-        return RallyJsonConverter.fromJson(objectMapperSupplier.get(),
+        return RallyJsonConverter.fromJson(jsonMapperSupplier.get(),
             attachmentResponse.getObject(), RallyObject.class);
-      } catch (IOException e) {
+      } catch (IOException | JacksonException e) {
         log.error("Unable to post ticket image: {}\n{}", e.getMessage(),
             Arrays.toString(e.getStackTrace()), e);
         throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
@@ -261,7 +261,7 @@ public class PostTicketCommand extends AbstractExtensionCommand<Ticket> {
     UpdateRequest updateRequest = new UpdateRequest(defect.getRef(), jsonObject);
     UpdateResponse update = restApi.update(updateRequest);
     checkResponse(update);
-    RallyJsonConverter.fromJson(objectMapperSupplier.get(), update.getObject(), Defect.class);
+    RallyJsonConverter.fromJson(jsonMapperSupplier.get(), update.getObject(), Defect.class);
   }
 
   private String createDescription(PostTicketRQ ticketRQ, List<InternalTicket.LogEntry> itemLogs) {
