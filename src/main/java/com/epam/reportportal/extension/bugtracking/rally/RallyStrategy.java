@@ -47,7 +47,6 @@ import com.epam.reportportal.extension.bugtracking.rally.info.impl.PluginInfoPro
 import com.epam.reportportal.extension.bugtracking.rally.utils.MemoizingSupplier;
 import com.epam.reportportal.extension.command.ExtensionCommand;
 import com.epam.reportportal.extension.util.RequestEntityConverter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -63,6 +62,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.support.AbstractApplicationContext;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * @author Dzmitry_Kavalets
@@ -80,7 +80,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   private final Supplier<Map<String, ExtensionCommand<?>>> commonPluginCommandMapping =
       new MemoizingSupplier<>(this::getCommonExtensionCommands);
 
-  private final Supplier<ObjectMapper> objectMapperSupplier;
+  private final Supplier<JsonMapper> objectMapperSupplier;
   private final Supplier<RequestEntityConverter> requestEntityConverterSupplier;
   private final Supplier<RallyClientProvider> clientProviderSupplier;
   private final Supplier<InternalTicketAssembler> ticketAssemblerSupplier;
@@ -111,14 +111,14 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
   @Autowired
   private DataEncoder dataEncoder;
   @Autowired
-  private ObjectMapper objectMapper;
+  private JsonMapper jsonMapper;
   @Autowired
   private BasicTextEncryptor encryptor;
 
   public RallyStrategy() {
-    objectMapperSupplier = new MemoizingSupplier<>(() -> objectMapper);
+    objectMapperSupplier = new MemoizingSupplier<>(() -> jsonMapper);
     requestEntityConverterSupplier =
-        new MemoizingSupplier<>(() -> new RequestEntityConverter(objectMapper));
+        new MemoizingSupplier<>(() -> new RequestEntityConverter(jsonMapper));
     clientProviderSupplier = new MemoizingSupplier<>(() -> new RallyClientProvider(encryptor));
     ticketAssemblerSupplier = new MemoizingSupplier<>(
         () -> new InternalTicketAssembler(logRepository, testItemRepository,
@@ -138,11 +138,15 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
     return params;
   }
 
+  // TODO: remove once service-api drops getIntegrationCommand from ReportPortalExtensionPoint
+  @Deprecated
   @Override
   public PluginCommand<?> getIntegrationCommand(String commandName) {
     return null;
   }
 
+  // TODO: remove once service-api drops getCommonCommand from ReportPortalExtensionPoint
+  @Deprecated
   @Override
   public CommonPluginCommand<?> getCommonCommand(String commandName) {
     return null;

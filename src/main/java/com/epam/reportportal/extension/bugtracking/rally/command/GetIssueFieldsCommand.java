@@ -37,7 +37,6 @@ import com.epam.reportportal.extension.bugtracking.rally.model.RallyConstants;
 import com.epam.reportportal.extension.bugtracking.rally.model.TypeDefinition;
 import com.epam.reportportal.extension.bugtracking.rally.utils.RallyJsonConverter;
 import com.epam.reportportal.extension.command.AbstractExtensionCommand;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.request.QueryRequest;
@@ -50,21 +49,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 @Slf4j
 public class GetIssueFieldsCommand extends AbstractExtensionCommand<List<PostFormField>> {
 
   private final RallyClientProvider clientProvider;
-  private final Supplier<ObjectMapper> objectMapperSupplier;
+  private final Supplier<JsonMapper> jsonMapperSupplier;
 
   public GetIssueFieldsCommand(RallyClientProvider clientProvider,
-      Supplier<ObjectMapper> objectMapperSupplier, ProjectRepository projectRepository,
+      Supplier<JsonMapper> jsonMapperSupplier, ProjectRepository projectRepository,
       OrganizationUserRepository organizationUserRepository,
       OrganizationRepository organizationRepository, ProjectUserRepository projectUserRepository) {
     super(projectRepository, organizationUserRepository, organizationRepository,
         projectUserRepository);
     this.clientProvider = clientProvider;
-    this.objectMapperSupplier = objectMapperSupplier;
+    this.jsonMapperSupplier = jsonMapperSupplier;
     this.minProjectRole = ProjectRole.EDITOR;
     this.minOrgRole = OrganizationRole.MANAGER;
     this.minUserRole = UserRole.ADMINISTRATOR;
@@ -108,7 +109,7 @@ public class GetIssueFieldsCommand extends AbstractExtensionCommand<List<PostFor
         }
       }
       return fields;
-    } catch (IOException e) {
+    } catch (IOException | JacksonException e) {
       log.error("Unable to load ticket fields: {}", e.getMessage(), e);
       throw new ReportPortalException(UNABLE_INTERACT_WITH_INTEGRATION,
           "Unable to load ticket fields: " + e.getMessage(), e);
@@ -122,27 +123,27 @@ public class GetIssueFieldsCommand extends AbstractExtensionCommand<List<PostFor
     typeDefRequest.setQueryFilter(new QueryFilter(RallyConstants.NAME, "=", RallyConstants.DEFECT));
     QueryResponse typeDefQueryResponse = restApi.query(typeDefRequest);
     JsonObject typeDefJsonObject = typeDefQueryResponse.getResults().get(0).getAsJsonObject();
-    ObjectMapper objectMapper = objectMapperSupplier.get();
+    JsonMapper jsonMapper = jsonMapperSupplier.get();
     TypeDefinition typeDefinition =
-        RallyJsonConverter.fromJson(objectMapper, typeDefJsonObject, TypeDefinition.class);
+        RallyJsonConverter.fromJson(jsonMapper, typeDefJsonObject, TypeDefinition.class);
     QueryRequest attributeRequest = new QueryRequest(
-        RallyJsonConverter.toJsonObject(objectMapper, typeDefinition.getAttributeDefinition()));
+        RallyJsonConverter.toJsonObject(jsonMapper, typeDefinition.getAttributeDefinition()));
     attributeRequest.setFetch(new Fetch(RallyConstants.ALLOWED_VALUES, RallyConstants.ELEMENT_NAME,
         RallyConstants.NAME, RallyConstants.REQUIRED, RallyConstants.TYPE, RallyConstants.OBJECT_ID,
         RallyConstants.READ_ONLY));
     QueryResponse attributesQueryResponse = restApi.query(attributeRequest);
-    return RallyJsonConverter.fromJsonList(objectMapper, attributesQueryResponse.getResults(),
+    return RallyJsonConverter.fromJsonList(jsonMapper, attributesQueryResponse.getResults(),
         AttributeDefinition.class);
   }
 
   private List<AllowedAttributeValue> findAllowedAttributeValues(RallyRestApi restApi,
       AttributeDefinition attributeDefinition) throws IOException {
-    ObjectMapper objectMapper = objectMapperSupplier.get();
+    JsonMapper jsonMapper = jsonMapperSupplier.get();
     QueryRequest allowedValuesRequest = new QueryRequest(
-        RallyJsonConverter.toJsonObject(objectMapper, attributeDefinition.getAllowedValue()));
+        RallyJsonConverter.toJsonObject(jsonMapper, attributeDefinition.getAllowedValue()));
     allowedValuesRequest.setFetch(new Fetch(RallyConstants.STRING_VALUE));
     QueryResponse allowedValuesResponse = restApi.query(allowedValuesRequest);
-    return RallyJsonConverter.fromJsonList(objectMapper, allowedValuesResponse.getResults(),
+    return RallyJsonConverter.fromJsonList(jsonMapper, allowedValuesResponse.getResults(),
         AllowedAttributeValue.class);
   }
 }
