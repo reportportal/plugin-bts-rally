@@ -40,11 +40,15 @@ ext['junit-jupiter.version'] = "${junitVersion}"
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.epam.reportportal:service-api'
-        annotationProcessor 'com.epam.reportportal:service-api'
+        implementation "com.epam.reportportal:service-api:${serviceApiVersion}"
+        annotationProcessor("com.epam.reportportal:service-api:${serviceApiVersion}") {
+            exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
+        }
     } else {
         implementation 'com.github.reportportal:service-api:73c327819e'
-        annotationProcessor 'com.github.reportportal:service-api:73c327819e'
+        annotationProcessor('com.github.reportportal:service-api:73c327819e') {
+            exclude group: 'org.springframework.modulith', module: 'spring-modulith-apt'
+        }
     }
 
     implementation 'com.rallydev.rest:rally-rest-api:2.2.1'
