@@ -72,7 +72,8 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
 
   private static final String DOCUMENTATION_LINK_FIELD = "documentationLink";
   private static final String DOCUMENTATION_LINK = "https://reportportal.io/docs/plugins/Rally";
-  private static final String PLUGIN_ID = "Rally";
+  private static final String PLUGIN_ID = "rally";
+  private static final String PLUGIN_NAME = "Rally";
   private static final String NAME_FIELD = "name";
 
   private final Supplier<Map<String, ExtensionCommand<?>>> pluginCommandMapping =
@@ -134,7 +135,7 @@ public class RallyStrategy implements ReportPortalExtensionPoint, DisposableBean
     params.put(ALLOWED_COMMANDS, new ArrayList<>(pluginCommandMapping.get().keySet()));
     params.put(DOCUMENTATION_LINK_FIELD, DOCUMENTATION_LINK);
     params.put(COMMON_COMMANDS, new ArrayList<>(commonPluginCommandMapping.get().keySet()));
-    params.put(NAME_FIELD, PLUGIN_ID);
+    params.put(NAME_FIELD, PLUGIN_NAME);
     return params;
   }
 
